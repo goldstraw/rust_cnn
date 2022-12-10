@@ -7,7 +7,7 @@ struct Neuron {
 
 struct MLP {
     layer_sizes: Vec<u16>,
-    num_layers: u8;
+    num_layers: u8,
     layers: Vec<Vec<Neuron>>,
     learning_rate: f32,
 }
@@ -15,7 +15,7 @@ struct MLP {
 fn build_MLP(layer_sizes: Vec<u16>, layers: Vec<Vec<Neuron>>, learning_rate: f32) -> MLP {
     let mut mlp: MLP = MLP {
         layer_sizes,
-        num_layers = layer_sizes.len();
+        num_layers: layer_sizes.len(),
         layers,
         learning_rate,
     }
@@ -44,7 +44,7 @@ fn main() {
         for sample in data {
             println!("{:?}", sample);
         }
-        let LAYER_SIZES: [u16; 3] = [2, 15, 4];
+        let layer_sizes: [u16; 3] = [2, 15, 4];
         let user1 = Neuron {
             activation: 0.0,
             bias: 0.0,
