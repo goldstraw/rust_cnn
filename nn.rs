@@ -1,3 +1,5 @@
+use rand::random;
+
 struct Neuron {
     activation: f32,
     bias: f32,
@@ -14,7 +16,21 @@ struct MLP {
 
 fn build_mlp(layer_sizes: Vec<u16>, learning_rate: f32) -> MLP {
     let num_layers: u8 = layer_sizes.len() as u8;
-    let layers: Vec<Vec<Neuron>> = vec![];
+    let mut layers: Vec<Vec<Neuron>> = vec![];
+    for i in 0..num_layers {
+        layers.push(vec![]);
+        for j in 0..layer_sizes[i] {
+            let neuron: Neuron = Neuron {
+                activation: random::<f64>(),
+                bias: random::<f64>(),
+                weights: ,
+                use rand::random;error: 
+                
+                0,
+            }
+            layers.get(i).push(neuron);
+        }
+    }
     let mlp: MLP = MLP {
         layer_sizes,
         num_layers,
