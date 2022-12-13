@@ -1,34 +1,37 @@
 use rand::random;
 
 struct Neuron {
-    activation: f32,
-    bias: f32,
-    weights: Vec<f32>,
-    error: f32,
+    activation: f64,
+    bias: f64,
+    weights: Vec<f64>,
+    error: f64,
 }
 
 struct MLP {
     layer_sizes: Vec<u16>,
-    num_layers: u8,
+    num_layers: usize,
     layers: Vec<Vec<Neuron>>,
-    learning_rate: f32,
+    learning_rate: f64,
 }
 
-fn build_mlp(layer_sizes: Vec<u16>, learning_rate: f32) -> MLP {
-    let num_layers: u8 = layer_sizes.len() as u8;
+fn build_mlp(layer_sizes: Vec<u16>, learning_rate: f64) -> MLP {
+    let num_layers: usize = layer_sizes.len();
     let mut layers: Vec<Vec<Neuron>> = vec![];
     for i in 0..num_layers {
         layers.push(vec![]);
-        for j in 0..layer_sizes[i] {
+        for _ in 0..layer_sizes[i] {
+            let next_layer_size: u16 = if i < (num_layers-1) { layer_sizes[i+1] } else { 0 };
+            let mut weights: Vec<f64> = vec![];
+            for _ in 0..next_layer_size {
+                weights.push(random::<f64>());
+            }
             let neuron: Neuron = Neuron {
                 activation: random::<f64>(),
                 bias: random::<f64>(),
-                weights: ,
-                use rand::random;error: 
-                
-                0,
-            }
-            layers.get(i).push(neuron);
+                weights,
+                error: 0.0,
+            };
+            layers[i].push(neuron);
         }
     }
     let mlp: MLP = MLP {
@@ -37,13 +40,12 @@ fn build_mlp(layer_sizes: Vec<u16>, learning_rate: f32) -> MLP {
         layers,
         learning_rate,
     };
-    println!("hi");
     
     mlp
 }
 
 fn main() {
-    let data: [(f32, f32, u8); 48] = [
+    let data: [(f64, f64, u8); 48] = [
         (0.56, 0.93, 0), (0.72, 0.96, 0), (0.90, 0.95, 0), (0.69, 0.81, 0),
         (0.83, 0.84, 0), (0.75, 0.66, 0), (0.84, 0.69, 0), (0.96, 0.83, 0),
         (0.62, 0.73, 0), (0.95, 0.63, 0), (0.84, 0.58, 0), (0.68, 0.59, 0), 
@@ -59,11 +61,8 @@ fn main() {
     ];
 
     loop {
-        for sample in data {
-            println!("{:?}", sample);
-        }
         let layer_sizes: Vec<u16> = vec![2, 15, 4];
-        build_MLP(layer_sizes, 0.02);
+        build_mlp(layer_sizes, 0.02);
         break;
     }
 }
