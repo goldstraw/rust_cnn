@@ -60,6 +60,42 @@ impl MLP {
             }
         }
     }
+
+    fn back_propagate(&mut self, desired: [f64; 4]) {
+    let n: f64 = self.layer_sizes[self.num_layers-1] as f64;
+        for i in 0..n as usize {
+            let error: f64 = (2.0/n) * (desired[i]-self.layers[self.num_layers-1][i].activation) * self.learning_rate;
+            println!("{}", error);
+        }
+    }
+
+    // def back_propagate(self, desired):
+    //     for i in range(len(self.layers[-1])):
+    //         n = len(self.layers[-1])
+    //         error = (2/n) * (desired[i] - self.layers[-1][i].activation)
+    //         error *= self.learning_rate
+
+    //         self.layers[-1][i].error = error
+    //         self.layers[-1][i].bias -= error
+
+    //     for layer_count in range(len(self.layers)-1):
+    //         layer = len(self.layers) - (2+layer_count)
+    //         for neuron in self.layers[layer]:
+    //             neuron.error = 0
+    //             for i in range(len(self.layers[layer+1])):
+    //                 next_error = self.layers[layer+1][i].error
+    //                 neuron.error += neuron.weights[i] * next_error
+    //                 neuron.weights[i] += neuron.activation * next_error
+                
+    //             neuron.bias -= neuron.error
+        
+    //     desired_index = desired.index(1)
+    //     output = 0
+    //     for i in range(len(self.layers[-1])):
+    //         if self.layers[-1][i].activation == 1:
+    //             output = i
+
+    //     return desired_index == output
 }
 
 fn main() {
@@ -83,7 +119,10 @@ fn main() {
 
     loop {
         for sample in data {
-            mlp.forward_propagate([sample.0,sample.1].to_vec())
+            mlp.forward_propagate([sample.0,sample.1].to_vec());
+            let mut desired: [f64; 4] = [0.0; 4];
+            desired[sample.2 as usize] = 1.0;
+            mlp.back_propagate(desired);
         }
         break;
     }
