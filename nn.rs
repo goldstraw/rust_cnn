@@ -62,40 +62,36 @@ impl MLP {
     }
 
     fn back_propagate(&mut self, desired: [f64; 4]) {
-    let n: f64 = self.layer_sizes[self.num_layers-1] as f64;
+        let n: f64 = self.layer_sizes[self.num_layers-1] as f64;
         for i in 0..n as usize {
-            let error: f64 = (2.0/n) * (desired[i]-self.layers[self.num_layers-1][i].activation) * self.learning_rate;
-            println!("{}", error);
+            let output: &mut Neuron = &mut self.layers[self.num_layers-1][i];
+            let error: f64 = (2.0/n) * (desired[i]-output.activation) * self.learning_rate;
+            output.error = error;
+            output.bias -= error;
+        }
+        
+        for i in 0..self.num_layers-1 {
+            let layer: usize = self.num_layers - (2+i);
+            for j in 0..self.layer_sizes[layer] as usize {
+                self.layers[layer][j].error = 0.0;
+                for k in 0..self.layer_sizes[layer+1] as usize {
+                    let next_error: f64 = self.layers[layer+1][k].error;
+                    self.layers[layer][j].error += self.layers[layer][j].weights[k] * next_error;
+                    self.layers[layer][j].weights[k] += self.layers[layer][j].activation * next_error;
+                }
+                self.layers[layer][j].bias -= self.layers[layer][j].error;
+            }
         }
     }
-
-    // def back_propagate(self, desired):
-    //     for i in range(len(self.layers[-1])):
-    //         n = len(self.layers[-1])
-    //         error = (2/n) * (desired[i] - self.layers[-1][i].activation)
-    //         error *= self.learning_rate
-
-    //         self.layers[-1][i].error = error
-    //         self.layers[-1][i].bias -= error
-
-    //     for layer_count in range(len(self.layers)-1):
-    //         layer = len(self.layers) - (2+layer_count)
-    //         for neuron in self.layers[layer]:
-    //             neuron.error = 0
-    //             for i in range(len(self.layers[layer+1])):
-    //                 next_error = self.layers[layer+1][i].error
-    //                 neuron.error += neuron.weights[i] * next_error
-    //                 neuron.weights[i] += neuron.activation * next_error
-                
-    //             neuron.bias -= neuron.error
-        
-    //     desired_index = desired.index(1)
-    //     output = 0
-    //     for i in range(len(self.layers[-1])):
-    //         if self.layers[-1][i].activation == 1:
-    //             output = i
-
-    //     return desired_index == output
+    
+    fn is_correct(&mut self, desired: [f64; 4]) -> bool {
+        for i in 0..4 {
+            if self.layers[self.num_layers-1][i].activation != desired[i] {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 fn main() {
@@ -116,14 +112,20 @@ fn main() {
 
     let layer_sizes: Vec<u16> = vec![2, 15, 4];
     let mut mlp: MLP = MLP::build_mlp(layer_sizes, 0.02);
-
-    loop {
+    let mut success: f64 = 0.0;
+    
+    while success < 0.95 {
+        success = 0.0;
         for sample in data {
             mlp.forward_propagate([sample.0,sample.1].to_vec());
             let mut desired: [f64; 4] = [0.0; 4];
             desired[sample.2 as usize] = 1.0;
             mlp.back_propagate(desired);
+            if mlp.is_correct(desired) {
+                success += 1.0;
+            }
         }
-        break;
+        success /= data.len() as f64;
+        println!("{}", success);
     }
 }
