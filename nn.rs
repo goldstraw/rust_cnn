@@ -61,7 +61,7 @@ impl MLP {
         }
     }
 
-    fn back_propagate(&mut self, desired: [f64; 4]) {
+    fn back_propagate(&mut self, desired: &Vec<f64>) {
         let n: f64 = self.layer_sizes[self.num_layers-1] as f64;
         for i in 0..n as usize {
             let output: &mut Neuron = &mut self.layers[self.num_layers-1][i];
@@ -84,7 +84,7 @@ impl MLP {
         }
     }
     
-    fn is_correct(&mut self, desired: [f64; 4]) -> bool {
+    fn is_correct(&mut self, desired: &Vec<f64>) -> bool {
         for i in 0..4 {
             if self.layers[self.num_layers-1][i].activation != desired[i] {
                 return false;
@@ -118,10 +118,10 @@ fn main() {
         success = 0.0;
         for sample in data {
             mlp.forward_propagate([sample.0,sample.1].to_vec());
-            let mut desired: [f64; 4] = [0.0; 4];
+            let mut desired: Vec<f64> = vec![0.0; 4];
             desired[sample.2 as usize] = 1.0;
-            mlp.back_propagate(desired);
-            if mlp.is_correct(desired) {
+            mlp.back_propagate(&desired);
+            if mlp.is_correct(&desired) {
                 success += 1.0;
             }
         }
