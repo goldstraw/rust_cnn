@@ -8,20 +8,20 @@ struct Neuron {
 }
 
 struct MLP {
-    layer_sizes: Vec<u16>,
+    layer_sizes: Vec<usize>,
     num_layers: usize,
     layers: Vec<Vec<Neuron>>,
     learning_rate: f64,
 }
 
 impl MLP {
-    fn build_mlp(layer_sizes: Vec<u16>, learning_rate: f64) -> MLP {
+    fn build_mlp(layer_sizes: Vec<usize>, learning_rate: f64) -> MLP {
         let num_layers: usize = layer_sizes.len();
         let mut layers: Vec<Vec<Neuron>> = vec![];
         for i in 0..num_layers {
             layers.push(vec![]);
             for _ in 0..layer_sizes[i] {
-                let next_layer_size: u16 = if i < (num_layers-1) { layer_sizes[i+1] } else { 0 };
+                let next_layer_size: usize = if i < (num_layers-1) { layer_sizes[i+1] } else { 0 };
                 let mut weights: Vec<f64> = vec![];
                 for _ in 0..next_layer_size {
                     weights.push(random::<f64>());
@@ -46,14 +46,14 @@ impl MLP {
     }
     
     fn forward_propagate(&mut self, input_layer: Vec<f64>) {
-        for i in 0..self.layer_sizes[0] as usize {
+        for i in 0..self.layer_sizes[0] {
             self.layers[0][i].activation = input_layer[i];
         }
         
-        for i in 1..self.num_layers as usize {
-            for j in 0..self.layer_sizes[i] as usize {
+        for i in 1..self.num_layers {
+            for j in 0..self.layer_sizes[i] {
                 self.layers[i][j].activation = 0.0;
-                for k in 0..self.layer_sizes[i-1] as usize {
+                for k in 0..self.layer_sizes[i-1] {
                     self.layers[i][j].activation += self.layers[i-1][k].activation * self.layers[i-1][k].weights[j];
                 }
                 self.layers[i][j].activation = if self.layers[i][j].activation > self.layers[i][j].bias { 1.0 } else { 0.0 };
@@ -72,9 +72,9 @@ impl MLP {
         
         for i in 0..self.num_layers-1 {
             let layer: usize = self.num_layers - (2+i);
-            for j in 0..self.layer_sizes[layer] as usize {
+            for j in 0..self.layer_sizes[layer] {
                 self.layers[layer][j].error = 0.0;
-                for k in 0..self.layer_sizes[layer+1] as usize {
+                for k in 0..self.layer_sizes[layer+1] {
                     let next_error: f64 = self.layers[layer+1][k].error;
                     self.layers[layer][j].error += self.layers[layer][j].weights[k] * next_error;
                     self.layers[layer][j].weights[k] += self.layers[layer][j].activation * next_error;
@@ -110,7 +110,7 @@ fn main() {
         (0.87, 0.24, 3), (0.67, 0.08, 3), (0.87, 0.06, 3), (0.93, 0.01, 3)
     ];
 
-    let layer_sizes: Vec<u16> = vec![2, 15, 4];
+    let layer_sizes: Vec<usize> = vec![2, 15, 4];
     let mut mlp: MLP = MLP::build_mlp(layer_sizes, 0.02);
     let mut success: f64 = 0.0;
     
@@ -118,7 +118,7 @@ fn main() {
         success = 0.0;
         for sample in data {
             mlp.forward_propagate([sample.0,sample.1].to_vec());
-            let mut desired: Vec<f64> = vec![0.0; 4];
+            let mut desired: Vec<f64> = vec![0.0; mlp.layer_sizes[mlp.num_layers-1]];
             desired[sample.2 as usize] = 1.0;
             mlp.back_propagate(&desired);
             if mlp.is_correct(&desired) {
