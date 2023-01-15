@@ -1,5 +1,33 @@
 use rand_distr::{Distribution, Normal};
 
+struct Kernel {
+    size: [usize; 3],
+    val: Vec<Vec<Vec<f64>>>,
+}
+
+impl Kernel {
+    fn create_kernel(size: [usize; 3]) -> Kernel {
+        let val: Vec<Vec<Vec<f64>>> = vec![];
+        let normal = Normal::new(0.0, 0.1).unwrap();
+        for i in 0..size[2] {
+            val.push(vec![]);    
+            for j in 0..size[1] {
+                val[i].push(vec![]);
+                for _ in 0..size[0] {
+                    val[i][j].push(normal.sample(&mut rand::thread_rng()));
+                }
+            }
+        }
+        
+        let kernel: Kernel = Kernel {
+            size,
+            val,
+        }
+
+        kernel
+    }
+}
+
 struct ConvLayer {
     input_size: [usize; 3],
     num_filters: usize,
@@ -13,12 +41,12 @@ struct ConvLayer {
 impl ConvLayer {
     fn create_conv_layer(input_size: [usize; 3], num_filters: usize, kernel_size: [usize; 2], stride: usize) -> ConvLayer {
 
-        // self.kernels = [[[[random.gauss(0,0.1) for j in range(kernel_size)] for i in range(kernel_size)] for k in range(input_depth)] for l in range(num_filters)]
-
         let mut biases: Vec<f64> = vec![];
+        let mut kernels: Vec<Kernel> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
         for _ in 0..num_filters {
             biases.push(normal.sample(&mut rand::thread_rng()));
+            kernels.push(Kernel::create_kernel([kernel_size[0],kernel_size[1],input_size[2]]));
         }
         
         let layer: ConvLayer = ConvLayer {
