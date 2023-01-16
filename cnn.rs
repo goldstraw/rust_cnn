@@ -88,6 +88,7 @@ impl MaxPoolingLayer {
 
 enum Layer {
     Conv(ConvLayer),
+    Mxpl(MaxPoolingLayer),
 }
 
 struct CNN {
@@ -111,10 +112,16 @@ impl CNN {
         let mut layer: ConvLayer = ConvLayer::create_conv_layer(input_size, input_depth, num_filters, kernel_size, stride);
         self.layers.push(Layer::Conv(layer))
     }
+
+    fn add_mxpl_layer(&mut self, input_size: usize, input_depth: usize, kernel_size: usize, stride: usize) {
+        let mut layer: MaxPoolingLayer = MaxPoolingLayer::create_mxpl_layer(input_size, input_depth, kernel_size, stride);
+        self.layers.push(Layer::Mxpl(layer))
+    }
 }
 
 fn main() {
 
     let mut cnn: CNN = CNN::create_cnn();
     cnn.add_conv_layer(28, 3, 6, 5, 1);
+    cnn.add_mxpl_layer(24, 6, 2, 2);
 }
