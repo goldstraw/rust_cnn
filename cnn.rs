@@ -1,19 +1,20 @@
 use rand_distr::{Distribution, Normal};
 
 struct Kernel {
-    size: [usize; 3],
+    size: usize,
+    depth: usize,
     val: Vec<Vec<Vec<f64>>>,
 }
 
 impl Kernel {
     fn create_kernel(size: usize, depth: usize) -> Kernel {
-        let val: Vec<Vec<Vec<f64>>> = vec![];
+        let mut val: Vec<Vec<Vec<f64>>> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
-        for i in 0..size[2] {
+        for i in 0..depth {
             val.push(vec![]);    
-            for j in 0..size[1] {
+            for j in 0..size {
                 val[i].push(vec![]);
-                for _ in 0..size[0] {
+                for _ in 0..size {
                     val[i][j].push(normal.sample(&mut rand::thread_rng()));
                 }
             }
@@ -21,8 +22,9 @@ impl Kernel {
         
         let kernel: Kernel = Kernel {
             size,
+            depth,
             val,
-        }
+        };
 
         kernel
     }
@@ -30,7 +32,7 @@ impl Kernel {
 
 struct ConvLayer {
     input_size: usize,
-    input_depth: usize
+    input_depth: usize,
     num_filters: usize,
     kernel_size: usize,
     output_size: usize,
@@ -52,9 +54,10 @@ impl ConvLayer {
         
         let layer: ConvLayer = ConvLayer {
             input_size,
+            input_depth,
             num_filters,
             kernel_size,
-            output_size: [((input_size-kernel_size) / stride) + 1; 2],
+            output_size: ((input_size-kernel_size) / stride) + 1,
             stride,
             biases,
             learning_rate: 0.01,
@@ -78,7 +81,7 @@ impl MaxPoolingLayer {
             input_size,
             input_depth,
             kernel_size,
-            output_size: ((input_size[0]-kernel_size[0]) / stride) + 1,
+            output_size: ((input_size-kernel_size) / stride) + 1,
             stride,
         };
 
@@ -124,4 +127,15 @@ fn main() {
     let mut cnn: CNN = CNN::create_cnn();
     cnn.add_conv_layer(28, 3, 6, 5, 1);
     cnn.add_mxpl_layer(24, 6, 2, 2);
+    cnn.add_conv_layer(12, 6, 9, 3, 1);
+    cnn.add_mxpl_layer(10, 6, 2, 2);
+
+
+    // # CNN
+    // # Input                 [28x28x1]
+    // # ConvLayer (5x5),1     [24x24x6]
+    // # MaxPool   (2x2),2     [12x12x6]
+    // # ConvLayer (3x3),1     [10x10x9]
+    // # MaxPool   (2x2),2     [5x5x9]
+    // # FullLayer (25x10)     [225]
 }
