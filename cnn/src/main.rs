@@ -1,3 +1,4 @@
+use rand;
 use rand_distr::{Distribution, Normal};
 
 struct Kernel {
