@@ -128,7 +128,6 @@ enum Layer {
 }
 
 struct CNN {
-    num_layers: usize,
     layers: Vec<Layer>,
 }
 
@@ -137,7 +136,6 @@ impl CNN {
         let mut layers: Vec<Layer> = vec![];
         
         let cnn: CNN = CNN {
-            num_layers: 0,
             layers,
         };
         
