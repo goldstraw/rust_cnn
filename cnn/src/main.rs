@@ -1,17 +1,16 @@
 use rand;
 use rand_distr::{Distribution, Normal};
 use mnist::*;
-use ndarray::{Array2,Array3};
 
 struct Kernel {
     size: usize,
     depth: usize,
-    val: Vec<Vec<Vec<f64>>>,
+    val: Vec<Vec<Vec<f32>>>,
 }
 
 impl Kernel {
     fn create_kernel(size: usize, depth: usize) -> Kernel {
-        let mut val: Vec<Vec<Vec<f64>>> = vec![];
+        let mut val: Vec<Vec<Vec<f32>>> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
         for i in 0..depth {
             val.push(vec![]);    
@@ -40,14 +39,14 @@ struct ConvLayer {
     kernel_size: usize,
     output_size: usize,
     stride: usize,
-    biases: Vec<f64>,
-    learning_rate: f64,
+    biases: Vec<f32>,
+    learning_rate: f32,
 }
 
 impl ConvLayer {
     fn create_conv_layer(input_size: usize, input_depth: usize, num_filters: usize, kernel_size: usize, stride: usize) -> ConvLayer {
 
-        let mut biases: Vec<f64> = vec![];
+        let mut biases: Vec<f32> = vec![];
         let mut kernels: Vec<Kernel> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
         for _ in 0..num_filters {
@@ -92,9 +91,40 @@ impl MaxPoolingLayer {
     }
 }
 
+struct FullyConnectedLayer {
+    input_size: usize,
+    output_size: usize,
+    weights: Vec<Vec<f32>>,
+    biases: Vec<f32>,
+}
+
+impl FullyConnectedLayer {
+    fn create_fcl_layer(input_size: usize, output_size: usize) -> FullyConnectedLayer {
+        let mut biases: Vec<f32> = vec![];
+        let mut weights: Vec<Vec<f32>> = vec![];
+        let normal = Normal::new(0.0, 0.1).unwrap();
+        for i in 0..input_size {
+            biases.push(normal.sample(&mut rand::thread_rng()));
+            weights.push(vec![]);
+            for _ in 0..output_size {
+                weights[i].push(normal.sample(&mut rand::thread_rng()));
+            }
+        }
+        let layer: FullyConnectedLayer = FullyConnectedLayer {
+            input_size,
+            output_size,
+            weights,
+            biases,
+        };
+
+        layer
+    }
+}
+
 enum Layer {
     Conv(ConvLayer),
     Mxpl(MaxPoolingLayer),
+    Fcl(FullyConnectedLayer),
 }
 
 struct CNN {
@@ -122,6 +152,11 @@ impl CNN {
     fn add_mxpl_layer(&mut self, input_size: usize, input_depth: usize, kernel_size: usize, stride: usize) {
         let mut layer: MaxPoolingLayer = MaxPoolingLayer::create_mxpl_layer(input_size, input_depth, kernel_size, stride);
         self.layers.push(Layer::Mxpl(layer))
+    }
+
+    fn add_fcl_layer(&mut self, input_size: usize, output_size: usize) {
+        let mut layer: FullyConnectedLayer = FullyConnectedLayer::create_fcl_layer(input_size, output_size);
+        self.layers.push(Layer::Fcl(layer))
     }
 }
 
@@ -172,6 +207,7 @@ fn main() {
     cnn.add_mxpl_layer(24, 6, 2, 2);
     cnn.add_conv_layer(12, 6, 9, 3, 1);
     cnn.add_mxpl_layer(10, 6, 2, 2);
+    cnn.add_fcl_layer(225, 10);
 
 
     // # CNN
