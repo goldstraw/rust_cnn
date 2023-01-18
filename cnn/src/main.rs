@@ -1,5 +1,7 @@
 use rand;
 use rand_distr::{Distribution, Normal};
+use mnist::*;
+use ndarray::{Array2,Array3};
 
 struct Kernel {
     size: usize,
@@ -123,7 +125,47 @@ impl CNN {
     }
 }
 
+fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
+    let img_width: usize = 28;
+    let img_height: usize = 28;
+
+    let mut images: Vec<Vec<Vec<f32>>> = vec![];
+    for image_count in 0..num_images {
+        let mut image: Vec<Vec<f32>> = vec![];
+        for h in 0..img_height {
+            let mut row: Vec<f32> = vec![];
+            for w in 0..img_width {
+                let i: usize = (image_count * 28 * 28) + (h * 28) + w;
+                row.push(data[i] as f32 / 256.0);
+            }
+            image.push(row);
+        }
+        images.push(image);
+    }
+
+    images
+}
+
 fn main() {
+
+    let Mnist {
+        trn_img,
+        trn_lbl,
+        tst_img,
+        tst_lbl,
+        ..
+    } = MnistBuilder::new()
+        .label_format_digit()
+        .training_set_length(50_000)
+        .validation_set_length(10_000)
+        .test_set_length(10_000)
+        .finalize();
+
+    let train_data: Vec<Vec<Vec<f32>>> = format_images(trn_img, 50_000);
+    let train_labels: Vec<u8> = trn_lbl;
+
+    let _test_data: Vec<Vec<Vec<f32>>> = format_images(tst_img, 10_000);
+    let _test_labels: Vec<u8> = tst_lbl;
 
     let mut cnn: CNN = CNN::create_cnn();
     cnn.add_conv_layer(28, 3, 6, 5, 1);

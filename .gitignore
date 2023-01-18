@@ -1,2 +1,3 @@
-cnn/target/*
-nn/target/*
+cnn/target
+cnn/data
+nn/target
