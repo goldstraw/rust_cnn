@@ -41,6 +41,7 @@ struct ConvLayer {
     stride: usize,
     biases: Vec<f32>,
     learning_rate: f32,
+    output: Vec<Vec<f32>>,
 }
 
 impl ConvLayer {
@@ -53,16 +54,26 @@ impl ConvLayer {
             biases.push(normal.sample(&mut rand::thread_rng()));
             kernels.push(Kernel::create_kernel(kernel_size, input_depth));
         }
+
+        let output_size: usize = ((input_size-kernel_size) / stride) + 1;
+        let mut output: Vec<Vec<f32>> = vec![];
+        for h in 0..output_size {
+            output.push(vec![]);
+            for _ in 0..output_size {
+                output[h].push(0.0);
+            }
+        }
         
         let layer: ConvLayer = ConvLayer {
             input_size,
             input_depth,
             num_filters,
             kernel_size,
-            output_size: ((input_size-kernel_size) / stride) + 1,
+            output_size,
             stride,
             biases,
             learning_rate: 0.01,
+            output,
         };
 
         layer
@@ -75,16 +86,27 @@ struct MaxPoolingLayer {
     kernel_size: usize,
     output_size: usize,
     stride: usize,
+    output: Vec<Vec<f32>>,
 }
 
 impl MaxPoolingLayer {
     fn create_mxpl_layer(input_size: usize, input_depth: usize, kernel_size: usize, stride: usize) -> MaxPoolingLayer {
+        let output_size: usize = ((input_size-kernel_size) / stride) + 1;
+        let mut output: Vec<Vec<f32>> = vec![];
+        for h in 0..output_size {
+            output.push(vec![]);
+            for _ in 0..output_size {
+                output[h].push(0.0);
+            }
+        }
+
         let layer: MaxPoolingLayer = MaxPoolingLayer {
             input_size,
             input_depth,
             kernel_size,
-            output_size: ((input_size-kernel_size) / stride) + 1,
+            output_size,
             stride,
+            output,
         };
 
         layer
@@ -96,10 +118,12 @@ struct FullyConnectedLayer {
     output_size: usize,
     weights: Vec<Vec<f32>>,
     biases: Vec<f32>,
+    output: Vec<f32>,
 }
 
 impl FullyConnectedLayer {
     fn create_fcl_layer(input_size: usize, output_size: usize) -> FullyConnectedLayer {
+        
         let mut biases: Vec<f32> = vec![];
         let mut weights: Vec<Vec<f32>> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
@@ -110,11 +134,18 @@ impl FullyConnectedLayer {
                 weights[i].push(normal.sample(&mut rand::thread_rng()));
             }
         }
+
+        let mut output: Vec<f32> = vec![];
+        for _ in 0..output_size {
+            output.push(0.0);
+        }
+
         let layer: FullyConnectedLayer = FullyConnectedLayer {
             input_size,
             output_size,
             weights,
             biases,
+            output,
         };
 
         layer
