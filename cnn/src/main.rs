@@ -306,8 +306,14 @@ fn main() {
         let output: &Vec<f32> = cnn.forward_propagate(&train_data[index]);
         let result: bool = highest_index(output) == train_labels[index];
 
+        // cnn.back_propagate(train_labels[index]);
+
         prev.pop();
         prev.insert(0, result);
+
+        if rng.gen_range(0..=500) == 0 {
+            println!("{}", success(&prev));
+        }
     }
     // for c in range(1000000):
     //     index = random.randint(0,59999)
