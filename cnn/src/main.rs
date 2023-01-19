@@ -315,24 +315,6 @@ fn main() {
             println!("{}", success(&prev));
         }
     }
-    // for c in range(1000000):
-    //     index = random.randint(0,59999)
-    //     image = format_image(images[index])
-    //     label = labels[index]
-    //     result = cnn.forward_propagate(image)
-    //     highest_output = -1
-    //     highest_index = -1
-    //     for i in range(10):
-    //         if result[i] > highest_output:
-    //             highest_output = result[i]
-    //             highest_index = i
-    //     recent_results.pop(0)
-    //     recent_results.append((label, highest_index))
-    //     if c % 500 == 499:
-    //         print(sum([(int(x[0]==x[1]) if x else 0) for x in recent_results])/100)
-
-    //     cnn.back_propagate(label)
-
 
     // # CNN
     // # Input                 [28x28x1]
