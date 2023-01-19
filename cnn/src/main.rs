@@ -2,6 +2,8 @@ use rand;
 use rand_distr::{Distribution, Normal};
 use mnist::*;
 
+const LEARNING_RATE: f32 = 0.01;
+
 struct Kernel {
     size: usize,
     depth: usize,
@@ -40,7 +42,6 @@ struct ConvLayer {
     output_size: usize,
     stride: usize,
     biases: Vec<f32>,
-    learning_rate: f32,
     output: Vec<Vec<f32>>,
 }
 
@@ -72,7 +73,6 @@ impl ConvLayer {
             output_size,
             stride,
             biases,
-            learning_rate: 0.01,
             output,
         };
 
@@ -245,5 +245,5 @@ fn main() {
     // # MaxPool   (2x2),2     [12x12x6]
     // # ConvLayer (3x3),1     [10x10x9]
     // # MaxPool   (2x2),2     [5x5x9]
-    // # FullLayer (25x10)     [225]
+    // # FullLayer (225x10)    [225]
 }
