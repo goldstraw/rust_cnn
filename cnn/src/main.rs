@@ -1,4 +1,4 @@
-use rand;
+use rand::Rng;
 use rand_distr::{Distribution, Normal};
 use mnist::*;
 
@@ -187,6 +187,11 @@ impl CNN {
         let mut layer: FullyConnectedLayer = FullyConnectedLayer::create_fcl_layer(input_size, output_size);
         self.layers.push(Layer::Fcl(layer))
     }
+
+    fn forward_propagate(&mut self, image: &Vec<Vec<f32>>) -> &Vec<f32> {
+
+        &self.layers.last().output
+    }
 }
 
 fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
@@ -208,6 +213,15 @@ fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
     }
 
     images
+}
+
+fn success(prev: &Vec<bool>) -> f32 {
+    let num_true: u16 = 0;
+    for i in 0..prev.len() {
+        num_true += prev[i] as u16;
+    }
+
+    num_true as f32 / prev.len() as f32
 }
 
 fn main() {
@@ -237,6 +251,35 @@ fn main() {
     cnn.add_conv_layer(12, 6, 9, 3, 1);
     cnn.add_mxpl_layer(10, 6, 2, 2);
     cnn.add_fcl_layer(225, 10);
+
+    let mut prev: Vec<bool> = vec![false; 100];
+
+    while success(&prev) < 0.95 {
+        let mut rng = rand::thread_rng();
+        let index: usize = rng.gen_range(0..=49999);
+        let output: Vec<f32> = cnn.forward_propagate(&train_data[index]);
+
+
+        prev.pop();
+        prev.insert(0,true);
+    }
+    // for c in range(1000000):
+    //     index = random.randint(0,59999)
+    //     image = format_image(images[index])
+    //     label = labels[index]
+    //     result = cnn.forward_propagate(image)
+    //     highest_output = -1
+    //     highest_index = -1
+    //     for i in range(10):
+    //         if result[i] > highest_output:
+    //             highest_output = result[i]
+    //             highest_index = i
+    //     recent_results.pop(0)
+    //     recent_results.append((label, highest_index))
+    //     if c % 500 == 499:
+    //         print(sum([(int(x[0]==x[1]) if x else 0) for x in recent_results])/100)
+
+    //     cnn.back_propagate(label)
 
 
     // # CNN
