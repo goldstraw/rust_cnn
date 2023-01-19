@@ -150,12 +150,28 @@ impl FullyConnectedLayer {
 
         layer
     }
+
+    fn forward_propagate(&mut self, input: &Vec<f32>) {
+
+    }
 }
 
 enum Layer {
     Conv(ConvLayer),
     Mxpl(MaxPoolingLayer),
     Fcl(FullyConnectedLayer),
+}
+
+impl Layer {
+    fn forward_propagate(&mut self, input: &Vec<Vec<f32>>) {
+        match self {
+            //Layer::Conv(a) => a.forward_propagate(input),
+            Layer::Conv(_) => panic!("Not defined yet"),
+            // Layer::Mxpl(b) => b.forward_propagate(input),
+            Layer::Mxpl(_) => panic!("Not defined yet"),
+            Layer::Fcl(c) => c.forward_propagate(&flatten(input)),
+        }
+    }
 }
 
 struct CNN {
@@ -190,6 +206,10 @@ impl CNN {
 
     fn forward_propagate(&mut self, image: &Vec<Vec<f32>>) -> &Vec<f32> {
 
+        for i in 0..self.layers.len() {
+            self.layers[i].forward_propagate(image);
+        }
+
         match &self.layers[self.layers.len()-1] {
             Layer::Fcl(FullyConnectedLayer {output, ..}) => &output,
             _ => panic!("The last layer is not a FullyConnectedLayer"),
@@ -216,6 +236,15 @@ fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
     }
 
     images
+}
+
+fn flatten(square: &Vec<Vec<f32>>) -> Vec<f32> {
+    let mut flat_data: Vec<f32> = vec![];
+    for row in square {
+        flat_data.extend(row);
+    }
+
+    flat_data
 }
 
 fn success(prev: &Vec<bool>) -> f32 {
