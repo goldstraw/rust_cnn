@@ -190,7 +190,10 @@ impl CNN {
 
     fn forward_propagate(&mut self, image: &Vec<Vec<f32>>) -> &Vec<f32> {
 
-        &self.layers.last().output
+        match &self.layers[self.layers.len()-1] {
+            Layer::Fcl(FullyConnectedLayer {output, ..}) => &output,
+            _ => panic!("The last layer is not a FullyConnectedLayer"),
+        }
     }
 }
 
@@ -216,12 +219,26 @@ fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
 }
 
 fn success(prev: &Vec<bool>) -> f32 {
-    let num_true: u16 = 0;
+    let mut num_true: u16 = 0;
     for i in 0..prev.len() {
         num_true += prev[i] as u16;
     }
 
     num_true as f32 / prev.len() as f32
+}
+
+fn highest_index(output: &Vec<f32>) -> u8 {
+    let mut highest_index: u8 = 127;
+    let mut highest_value: f32 = 0.0;
+
+    for i in 0..output.len() {
+        if output[i] > highest_value {
+            highest_value = output[i];
+            highest_index = i as u8;
+        }
+    }
+
+    return highest_index;
 }
 
 fn main() {
@@ -257,11 +274,11 @@ fn main() {
     while success(&prev) < 0.95 {
         let mut rng = rand::thread_rng();
         let index: usize = rng.gen_range(0..=49999);
-        let output: Vec<f32> = cnn.forward_propagate(&train_data[index]);
-
+        let output: &Vec<f32> = cnn.forward_propagate(&train_data[index]);
+        let result: bool = highest_index(output) == train_labels[index];
 
         prev.pop();
-        prev.insert(0,true);
+        prev.insert(0, result);
     }
     // for c in range(1000000):
     //     index = random.randint(0,59999)
