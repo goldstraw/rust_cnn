@@ -302,7 +302,7 @@ fn main() {
 
     while success(&prev) < 0.95 {
         let mut rng = rand::thread_rng();
-        let index: usize = rng.gen_range(0..=49999);
+        let index: usize = rng.gen_range(0..=49_999);
         let output: &Vec<f32> = cnn.forward_propagate(&train_data[index]);
         let result: bool = highest_index(output) == train_labels[index];
 
