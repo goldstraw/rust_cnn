@@ -42,7 +42,7 @@ struct ConvLayer {
     output_size: usize,
     stride: usize,
     biases: Vec<f32>,
-    output: Vec<Vec<f32>>,
+    output: Vec<Vec<Vec<f32>>>,
 }
 
 impl ConvLayer {
@@ -57,11 +57,14 @@ impl ConvLayer {
         }
 
         let output_size: usize = ((input_size-kernel_size) / stride) + 1;
-        let mut output: Vec<Vec<f32>> = vec![];
-        for h in 0..output_size {
+        let mut output: Vec<Vec<Vec<f32>>> = vec![];
+        for f in 0..num_filters {
             output.push(vec![]);
-            for _ in 0..output_size {
-                output[h].push(0.0);
+            for h in 0..output_size {
+                output[f].push(vec![]);
+                for _ in 0..output_size {
+                    output[f][h].push(0.0);
+                }
             }
         }
         
@@ -86,17 +89,20 @@ struct MaxPoolingLayer {
     kernel_size: usize,
     output_size: usize,
     stride: usize,
-    output: Vec<Vec<f32>>,
+    output: Vec<Vec<Vec<f32>>>,
 }
 
 impl MaxPoolingLayer {
     fn create_mxpl_layer(input_size: usize, input_depth: usize, kernel_size: usize, stride: usize) -> MaxPoolingLayer {
         let output_size: usize = ((input_size-kernel_size) / stride) + 1;
-        let mut output: Vec<Vec<f32>> = vec![];
-        for h in 0..output_size {
+        let mut output: Vec<Vec<Vec<f32>>> = vec![];
+        for f in 0..input_depth {
             output.push(vec![]);
-            for _ in 0..output_size {
-                output[h].push(0.0);
+            for h in 0..output_size {
+                output[f].push(vec![]);
+                for _ in 0..output_size {
+                    output[f][h].push(0.0);
+                }
             }
         }
 
@@ -110,6 +116,25 @@ impl MaxPoolingLayer {
         };
 
         layer
+    }
+
+    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        for f in 0..self.input_depth {
+            for y in 0..self.output_size {
+                for x in 0..self.output_size {
+                    self.output[f][y][x] = -1.0;
+                    for y_p in 0..self.kernel_size {
+                        for x_p in 0..self.kernel_size {
+                            let val: f32 = input[f][y*self.stride + y_p][x*self.stride + x_p];
+                            if val > self.output[f][y][x] {
+                                self.output[f][y][x] = val;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.output.clone()
     }
 }
 
@@ -151,7 +176,7 @@ impl FullyConnectedLayer {
         layer
     }
 
-    fn forward_propagate(&mut self, input: &Vec<f32>) {
+    fn forward_propagate(&mut self, input: Vec<f32>) -> Vec<Vec<Vec<f32>>> {
         for j in 0..self.output_size {
             self.output[j] = self.biases[j];
             for i in 0..self.input_size {
@@ -159,6 +184,8 @@ impl FullyConnectedLayer {
             }
             self.output[j] = sigmoid(self.output[j]);
         }
+        let formatted_output: Vec<Vec<Vec<f32>>> = vec![vec![self.output.clone()]];
+        formatted_output
     }
 }
 
@@ -169,13 +196,12 @@ enum Layer {
 }
 
 impl Layer {
-    fn forward_propagate(&mut self, input: &Vec<Vec<f32>>) {
+    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         match self {
             //Layer::Conv(a) => a.forward_propagate(input),
             Layer::Conv(_) => panic!("Not defined yet"),
-            // Layer::Mxpl(b) => b.forward_propagate(input),
-            Layer::Mxpl(_) => panic!("Not defined yet"),
-            Layer::Fcl(c) => c.forward_propagate(&flatten(input)),
+            Layer::Mxpl(b) => b.forward_propagate(input),
+            Layer::Fcl(c) => c.forward_propagate(flatten(input)),
         }
     }
 }
@@ -210,16 +236,13 @@ impl CNN {
         self.layers.push(Layer::Fcl(layer))
     }
 
-    fn forward_propagate(&mut self, image: &Vec<Vec<f32>>) -> &Vec<f32> {
-
+    fn forward_propagate(&mut self, image: Vec<Vec<Vec<f32>>>) -> Vec<f32> {
+        let mut output: Vec<Vec<Vec<f32>>> = image;
         for i in 0..self.layers.len() {
-            self.layers[i].forward_propagate(image);
+            output = self.layers[i].forward_propagate(output);
         }
 
-        match &self.layers[self.layers.len()-1] {
-            Layer::Fcl(FullyConnectedLayer {output, ..}) => &output,
-            _ => panic!("The last layer is not a FullyConnectedLayer"),
-        }
+        output[0][0].clone()
     }
 }
 
@@ -248,11 +271,13 @@ fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
     images
 }
 
-fn flatten(square: &Vec<Vec<f32>>) -> Vec<f32> {
+fn flatten(squares: Vec<Vec<Vec<f32>>>) -> Vec<f32> {
     let mut flat_data: Vec<f32> = vec![];
-    for row in square {
-        flat_data.extend(row);
-    }
+    for square in squares {
+        for row in square {
+            flat_data.extend(row);
+        }
+    }   
 
     flat_data
 }
@@ -266,7 +291,7 @@ fn success(prev: &Vec<bool>) -> f32 {
     num_true as f32 / prev.len() as f32
 }
 
-fn highest_index(output: &Vec<f32>) -> u8 {
+fn highest_index(output: Vec<f32>) -> u8 {
     let mut highest_index: u8 = 127;
     let mut highest_value: f32 = 0.0;
 
@@ -313,7 +338,7 @@ fn main() {
     while success(&prev) < 0.95 {
         let mut rng = rand::thread_rng();
         let index: usize = rng.gen_range(0..=49_999);
-        let output: &Vec<f32> = cnn.forward_propagate(&train_data[index]);
+        let output: Vec<f32> = cnn.forward_propagate(vec![train_data[index].clone()]);
         let result: bool = highest_index(output) == train_labels[index];
 
         // cnn.back_propagate(train_labels[index]);
