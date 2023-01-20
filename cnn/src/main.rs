@@ -225,6 +225,14 @@ impl Layer {
             Layer::Fcl(c) => c.forward_propagate(flatten(input)),
         }
     }
+
+    fn get_output(&mut self, index: usize) -> f32 {
+        match self {
+            Layer::Conv(_) => panic!("Layer not fully connected"),
+            Layer::Mxpl(_) => panic!("Layer not fully connected"),
+            Layer::Fcl(c) => c.output[index],
+        }
+    }
 }
 
 struct CNN {
@@ -264,6 +272,23 @@ impl CNN {
         }
 
         output[0][0].clone()
+    }
+
+    fn last_layer_error(&mut self, label: usize) -> Vec<f32> {
+        let mut error: Vec<f32> = vec![];
+        for i in 0..10 {
+            let desired: u8 = (label == i) as u8;
+            let last_index: usize = self.layers.len()-1;
+            error.push((2.0/10.0) * (self.layers[last_index].get_output(i) - desired as f32));
+        }
+
+        error.clone()
+    }
+
+    fn back_propagate(&mut self, label: usize) {
+        // error = self.last_layer_error(label)
+        // for layer in self.layers[::-1]:
+        //     error = layer.back_propagate(error)
     }
 }
 
