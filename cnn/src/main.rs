@@ -42,6 +42,7 @@ struct ConvLayer {
     output_size: usize,
     stride: usize,
     biases: Vec<f32>,
+    kernels: Vec<Kernel>,
     output: Vec<Vec<Vec<f32>>>,
 }
 
@@ -76,10 +77,31 @@ impl ConvLayer {
             output_size,
             stride,
             biases,
+            kernels,
             output,
         };
 
         layer
+    }
+
+    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                for f in 0..self.num_filters {
+                    self.output[f][y][x] = self.biases[f];
+                    for y_k in 0..self.kernel_size {
+                        for x_k in 0..self.kernel_size {
+                            for f_i in 0..self.input_depth {
+                                let val: f32 = input[f_i][y*self.stride + y_k][x*self.stride + x_k];
+                                self.output[f][y][x] += self.kernels[f].val[f_i][y_k][x_k] * val;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        self.output.clone()
     }
 }
 
@@ -198,8 +220,7 @@ enum Layer {
 impl Layer {
     fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         match self {
-            //Layer::Conv(a) => a.forward_propagate(input),
-            Layer::Conv(_) => panic!("Not defined yet"),
+            Layer::Conv(a) => a.forward_propagate(input),
             Layer::Mxpl(b) => b.forward_propagate(input),
             Layer::Fcl(c) => c.forward_propagate(flatten(input)),
         }
@@ -212,7 +233,7 @@ struct CNN {
 
 impl CNN {
     fn create_cnn() -> CNN {
-        let mut layers: Vec<Layer> = vec![];
+        let layers: Vec<Layer> = vec![];
         
         let cnn: CNN = CNN {
             layers,
@@ -222,17 +243,17 @@ impl CNN {
     }
     
     fn add_conv_layer(&mut self, input_size: usize, input_depth: usize, num_filters: usize, kernel_size: usize, stride: usize) {
-        let mut layer: ConvLayer = ConvLayer::create_conv_layer(input_size, input_depth, num_filters, kernel_size, stride);
+        let layer: ConvLayer = ConvLayer::create_conv_layer(input_size, input_depth, num_filters, kernel_size, stride);
         self.layers.push(Layer::Conv(layer))
     }
 
     fn add_mxpl_layer(&mut self, input_size: usize, input_depth: usize, kernel_size: usize, stride: usize) {
-        let mut layer: MaxPoolingLayer = MaxPoolingLayer::create_mxpl_layer(input_size, input_depth, kernel_size, stride);
+        let layer: MaxPoolingLayer = MaxPoolingLayer::create_mxpl_layer(input_size, input_depth, kernel_size, stride);
         self.layers.push(Layer::Mxpl(layer))
     }
 
     fn add_fcl_layer(&mut self, input_size: usize, output_size: usize) {
-        let mut layer: FullyConnectedLayer = FullyConnectedLayer::create_fcl_layer(input_size, output_size);
+        let layer: FullyConnectedLayer = FullyConnectedLayer::create_fcl_layer(input_size, output_size);
         self.layers.push(Layer::Fcl(layer))
     }
 
