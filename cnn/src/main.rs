@@ -152,7 +152,13 @@ impl FullyConnectedLayer {
     }
 
     fn forward_propagate(&mut self, input: &Vec<f32>) {
-
+        for j in 0..self.output_size {
+            self.output[j] = self.biases[j];
+            for i in 0..self.input_size {
+                self.output[j] += input[i] * self.weights[i][j];
+            }
+            self.output[j] = sigmoid(self.output[j]);
+        }
     }
 }
 
@@ -215,6 +221,10 @@ impl CNN {
             _ => panic!("The last layer is not a FullyConnectedLayer"),
         }
     }
+}
+
+fn sigmoid(x: f32) -> f32 {
+    1.0 / (1.0 + (-x).exp())
 }
 
 fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
