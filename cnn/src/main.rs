@@ -112,18 +112,23 @@ struct MaxPoolingLayer {
     output_size: usize,
     stride: usize,
     output: Vec<Vec<Vec<f32>>>,
+    highest_index: Vec<Vec<Vec<[usize; 2]>>>,
 }
 
 impl MaxPoolingLayer {
     fn create_mxpl_layer(input_size: usize, input_depth: usize, kernel_size: usize, stride: usize) -> MaxPoolingLayer {
         let output_size: usize = ((input_size-kernel_size) / stride) + 1;
         let mut output: Vec<Vec<Vec<f32>>> = vec![];
+        let mut highest_index: Vec<Vec<Vec<[usize; 2]>>> = vec![];
         for f in 0..input_depth {
             output.push(vec![]);
-            for h in 0..output_size {
+            highest_index.push(vec![]);
+            for y in 0..output_size {
                 output[f].push(vec![]);
+                highest_index[f].push(vec![]);
                 for _ in 0..output_size {
-                    output[f][h].push(0.0);
+                    output[f][y].push(0.0);
+                    highest_index[f][y].push([0,0]);
                 }
             }
         }
@@ -135,6 +140,7 @@ impl MaxPoolingLayer {
             output_size,
             stride,
             output,
+            highest_index,
         };
 
         layer
@@ -150,6 +156,7 @@ impl MaxPoolingLayer {
                             let val: f32 = input[f][y*self.stride + y_p][x*self.stride + x_p];
                             if val > self.output[f][y][x] {
                                 self.output[f][y][x] = val;
+                                self.highest_index[f][y][x] = [y*self.stride + y_p, x*self.stride + x_p];
                             }
                         }
                     }
@@ -157,6 +164,30 @@ impl MaxPoolingLayer {
             }
         }
         self.output.clone()
+    }
+
+    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        let mut prev_error: Vec<Vec<Vec<f32>>> = vec![];
+        for f in 0..self.input_depth {
+            prev_error.push(vec![]);
+            for y in 0..self.input_size {
+                prev_error[f].push(vec![]);
+                for _ in 0..self.input_size {
+                    prev_error[f][y].push(0.0);
+                }
+            }
+        }
+
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                for f in 0..self.input_depth {
+                    let m: [usize; 2] = self.highest_index[f][y][x];
+                    prev_error[f][m[0]][m[1]] = error[f][y][x];
+                }
+            }
+        }
+
+        prev_error
     }
 }
 
@@ -226,6 +257,16 @@ impl Layer {
         }
     }
 
+    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        match self {
+            // Layer::Conv(a) => a.back_propagate(error),
+            Layer::Conv(_) => panic!("Not implemented yet"),
+            Layer::Mxpl(b) => b.back_propagate(error),
+            // Layer::Fcl(c) => c.back_propagate(error[0][0]),
+            Layer::Fcl(_) => panic!("Not implemented yet"),
+        }
+    }
+
     fn get_output(&mut self, index: usize) -> f32 {
         match self {
             Layer::Conv(_) => panic!("Layer not fully connected"),
@@ -274,7 +315,7 @@ impl CNN {
         output[0][0].clone()
     }
 
-    fn last_layer_error(&mut self, label: usize) -> Vec<f32> {
+    fn last_layer_error(&mut self, label: usize) -> Vec<Vec<Vec<f32>>> {
         let mut error: Vec<f32> = vec![];
         for i in 0..10 {
             let desired: u8 = (label == i) as u8;
@@ -282,11 +323,14 @@ impl CNN {
             error.push((2.0/10.0) * (self.layers[last_index].get_output(i) - desired as f32));
         }
 
-        error.clone()
+        vec![vec![error.clone()]]
     }
 
     fn back_propagate(&mut self, label: usize) {
-        // error = self.last_layer_error(label)
+        let mut error: Vec<Vec<Vec<f32>>> = self.last_layer_error(label);
+        for i in (0..self.layers.len()).rev() {
+            error = self.layers[i].back_propagate(error);
+        }
         // for layer in self.layers[::-1]:
         //     error = layer.back_propagate(error)
     }
@@ -387,7 +431,7 @@ fn main() {
         let output: Vec<f32> = cnn.forward_propagate(vec![train_data[index].clone()]);
         let result: bool = highest_index(output) == train_labels[index];
 
-        // cnn.back_propagate(train_labels[index]);
+        cnn.back_propagate(train_labels[index] as usize);
 
         prev.pop();
         prev.insert(0, result);
