@@ -43,6 +43,7 @@ struct ConvLayer {
     stride: usize,
     biases: Vec<f32>,
     kernels: Vec<Kernel>,
+    input: Vec<Vec<Vec<f32>>>,
     output: Vec<Vec<Vec<f32>>>,
 }
 
@@ -78,6 +79,7 @@ impl ConvLayer {
             stride,
             biases,
             kernels,
+            input: vec![],
             output,
         };
 
@@ -85,14 +87,17 @@ impl ConvLayer {
     }
 
     fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        self.input = input.clone();
         for y in 0..self.output_size {
             for x in 0..self.output_size {
+                let left = x * self.stride;
+                let top = y * self.stride;
                 for f in 0..self.num_filters {
                     self.output[f][y][x] = self.biases[f];
                     for y_k in 0..self.kernel_size {
                         for x_k in 0..self.kernel_size {
                             for f_i in 0..self.input_depth {
-                                let val: f32 = input[f_i][y*self.stride + y_k][x*self.stride + x_k];
+                                let val: f32 = input[f_i][top + y_k][left + x_k];
                                 self.output[f][y][x] += self.kernels[f].val[f_i][y_k][x_k] * val;
                             }
                         }
@@ -102,6 +107,67 @@ impl ConvLayer {
         }
 
         self.output.clone()
+    }
+
+    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        let mut prev_error: Vec<Vec<Vec<f32>>> = vec![];
+        for f in 0..self.input_depth {
+            prev_error.push(vec![]);
+            for y in 0..self.input_size {
+                prev_error[f].push(vec![]);
+                for _ in 0..self.input_size {
+                    prev_error[f][y].push(0.0);
+                }
+            }
+        }
+
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                for f in 0..self.num_filters {
+                    if self.output[f][y][x] > 0.0 {
+                        self.biases[f] -= error[f][y][x] * LEARNING_RATE;
+                    }
+                }
+            }
+        }
+
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                let left = x * self.stride;
+                let top = y * self.stride;
+                for f in 0..self.num_filters {
+                    for y_k in 0..self.kernel_size {
+                        for x_k in 0..self.kernel_size {
+                            if self.output[f][y][x] > 0.0 {
+                                for f_i in 0..self.input_depth {
+                                    prev_error[f_i][top+y_k][left+x_k] += self.kernels[f].val[f_i][y_k][x_k] * error[f][y][x];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                let left = x * self.stride;
+                let top = y * self.stride;
+                for f in 0..self.num_filters {
+                    for y_k in 0..self.kernel_size {
+                        for x_k in 0..self.kernel_size {
+                            if self.output[f][y][x] > 0.0 {
+                                for f_i in 0..self.input_depth {
+                                    self.kernels[f].val[f_i][y_k][x_k] -= self.input[f_i][top+y_k][left+x_k] * error[f][y][x] * LEARNING_RATE;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        prev_error
     }
 }
 
@@ -150,13 +216,15 @@ impl MaxPoolingLayer {
         for f in 0..self.input_depth {
             for y in 0..self.output_size {
                 for x in 0..self.output_size {
+                    let left = x * self.stride;
+                    let top = y * self.stride;
                     self.output[f][y][x] = -1.0;
                     for y_p in 0..self.kernel_size {
                         for x_p in 0..self.kernel_size {
-                            let val: f32 = input[f][y*self.stride + y_p][x*self.stride + x_p];
+                            let val: f32 = input[f][top + y_p][left + x_p];
                             if val > self.output[f][y][x] {
                                 self.output[f][y][x] = val;
-                                self.highest_index[f][y][x] = [y*self.stride + y_p, x*self.stride + x_p];
+                                self.highest_index[f][y][x] = [top+y_p, left+x_p];
                             }
                         }
                     }
@@ -217,11 +285,6 @@ impl FullyConnectedLayer {
             }
         }
 
-        let mut input: Vec<f32> = vec![];
-        for _ in 0..input_size {
-            input.push(0.0);
-        }
-
         let mut output: Vec<f32> = vec![];
         for _ in 0..output_size {
             output.push(0.0);
@@ -234,7 +297,7 @@ impl FullyConnectedLayer {
             output_size,
             weights,
             biases,
-            input,
+            input: vec![],
             output,
         };
 
@@ -301,8 +364,7 @@ impl Layer {
 
     fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         match self {
-            // Layer::Conv(a) => a.back_propagate(error),
-            Layer::Conv(_) => panic!("Not implemented yet"),
+            Layer::Conv(a) => a.back_propagate(error),
             Layer::Mxpl(b) => b.back_propagate(error),
             Layer::Fcl(c) => c.back_propagate(error[0][0].clone()),
         }
