@@ -67,15 +67,21 @@ impl ConvLayer {
 
     fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         self.input = input.clone();
-        for comb in mfor(&[self.output_size,self.output_size,self.num_filters]) {
-            let (y,x,f) = (comb[0], comb[1], comb[2]);
-            let left = x * self.stride;
-            let top = y * self.stride;
-            self.output[f][y][x] = self.biases[f];
-            for comb2 in mfor(&[self.kernel_size,self.kernel_size,self.input_depth]) {
-                let (y_k,x_k,f_i) = (comb2[0], comb2[1], comb2[2]);
-                let val: f32 = input[f_i][top + y_k][left + x_k];
-                self.output[f][y][x] += self.kernels[f][f_i][y_k][x_k] * val;
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                let left = x * self.stride;
+                let top = y * self.stride;
+                for f in 0..self.num_filters {
+                    self.output[f][y][x] = self.biases[f];
+                    for y_k in 0..self.kernel_size {
+                        for x_k in 0..self.kernel_size {
+                            for f_i in 0..self.input_depth {
+                                let val: f32 = input[f_i][top + y_k][left + x_k];
+                                self.output[f][y][x] += self.kernels[f][f_i][y_k][x_k] * val;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -94,31 +100,48 @@ impl ConvLayer {
             }
         }
 
-        for comb in mfor(&[self.output_size,self.output_size,self.num_filters]) {
-            let (y,x,f) = (comb[0], comb[1], comb[2]);
-            if self.output[f][y][x] > 0.0 {
-                self.biases[f] -= error[f][y][x] * LEARNING_RATE;
-            }
-        }
-
-        for comb in mfor(&[self.output_size,self.output_size,self.num_filters,self.kernel_size,self.kernel_size]) {
-            let (y,x,f,y_k,x_k) = (comb[0], comb[1], comb[2], comb[3], comb[4]);
-            let left = x * self.stride;
-            let top = y * self.stride;
-            if self.output[f][y][x] > 0.0 {
-                for f_i in 0..self.input_depth {
-                    prev_error[f_i][top+y_k][left+x_k] += self.kernels[f][f_i][y_k][x_k] * error[f][y][x];
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                for f in 0..self.num_filters {
+                    if self.output[f][y][x] > 0.0 {
+                        self.biases[f] -= error[f][y][x] * LEARNING_RATE;
+                    }
                 }
             }
         }
 
-        for comb in mfor(&[self.output_size,self.output_size,self.num_filters,self.kernel_size,self.kernel_size]) {
-            let (y,x,f,y_k,x_k) = (comb[0], comb[1], comb[2], comb[3], comb[4]);
-            let left = x * self.stride;
-            let top = y * self.stride;
-            if self.output[f][y][x] > 0.0 {
-                for f_i in 0..self.input_depth {
-                    self.kernels[f][f_i][y_k][x_k] -= self.input[f_i][top+y_k][left+x_k] * error[f][y][x] * LEARNING_RATE;
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                let left = x * self.stride;
+                let top = y * self.stride;
+                for f in 0..self.num_filters {
+                    for y_k in 0..self.kernel_size {
+                        for x_k in 0..self.kernel_size {
+                            if self.output[f][y][x] > 0.0 {
+                                for f_i in 0..self.input_depth {
+                                    prev_error[f_i][top+y_k][left+x_k] += self.kernels[f][f_i][y_k][x_k] * error[f][y][x];
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                let left = x * self.stride;
+                let top = y * self.stride;
+                for f in 0..self.num_filters {
+                    for y_k in 0..self.kernel_size {
+                        for x_k in 0..self.kernel_size {
+                            if self.output[f][y][x] > 0.0 {
+                                for f_i in 0..self.input_depth {
+                                    self.kernels[f][f_i][y_k][x_k] -= self.input[f_i][top+y_k][left+x_k] * error[f][y][x] * LEARNING_RATE;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -169,17 +192,21 @@ impl MaxPoolingLayer {
     }
 
     fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-        for comb in mfor(&[self.input_depth, self.output_size, self.output_size]) {
-            let (f,y,x) = (comb[0], comb[1], comb[2]);
-            let left = x * self.stride;
-            let top = y * self.stride;
-            self.output[f][y][x] = -1.0;
-            for comb2 in mfor(&[self.kernel_size, self.kernel_size]) {
-                let (y_p, x_p) = (comb2[0], comb2[1]);
-                let val: f32 = input[f][top + y_p][left + x_p];
-                if val > self.output[f][y][x] {
-                    self.output[f][y][x] = val;
-                    self.highest_index[f][y][x] = [top+y_p, left+x_p];
+        for f in 0..self.input_depth {
+            for y in 0..self.output_size {
+                for x in 0..self.output_size {
+                    let left = x * self.stride;
+                    let top = y * self.stride;
+                    self.output[f][y][x] = -1.0;
+                    for y_p in 0..self.kernel_size {
+                        for x_p in 0..self.kernel_size {
+                            let val: f32 = input[f][top + y_p][left + x_p];
+                            if val > self.output[f][y][x] {
+                                self.output[f][y][x] = val;
+                                self.highest_index[f][y][x] = [top+y_p, left+x_p];
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -198,10 +225,13 @@ impl MaxPoolingLayer {
             }
         }
 
-        for comb in mfor(&[self.output_size, self.output_size, self.input_depth]) {
-            let (y,x,f) = (comb[0], comb[1], comb[2]);
-            let m: [usize; 2] = self.highest_index[f][y][x];
-            prev_error[f][m[0]][m[1]] = error[f][y][x];
+        for y in 0..self.output_size {
+            for x in 0..self.output_size {
+                for f in 0..self.input_depth {
+                    let m: [usize; 2] = self.highest_index[f][y][x];
+                    prev_error[f][m[0]][m[1]] = error[f][y][x];
+                }
+            }
         }
 
         prev_error
@@ -450,27 +480,8 @@ fn highest_index(output: Vec<f32>) -> u8 {
     return highest_index;
 }
 
-
-fn mfor(sizes: &[usize]) -> Vec<Vec<usize>> {
-    // for comb in mfor(&[5,6]) { let (a,b) = (comb[0], comb[1]) }
-    // is equivalent to:
-    // for a in 0..5 { for b in 0..6 {} }
-    let mut out: Vec<Vec<usize>> = vec![vec![0; sizes.len()]];
-    for i in (0..sizes.len()).rev() {
-        let mut temp: Vec<Vec<usize>> = vec![];
-        for val in 0..sizes[i] {
-            for old in out.iter() {
-                let mut new = old.clone();
-                new[i] = val;
-                temp.push(new);
-            }
-        }
-        out = temp;
-    }
-    out
-}
-
 fn main() {
+
     let Mnist {
         trn_img,
         trn_lbl,
