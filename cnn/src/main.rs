@@ -4,36 +4,6 @@ use mnist::*;
 
 const LEARNING_RATE: f32 = 0.01;
 
-struct Kernel {
-    size: usize,
-    depth: usize,
-    val: Vec<Vec<Vec<f32>>>,
-}
-
-impl Kernel {
-    fn create_kernel(size: usize, depth: usize) -> Kernel {
-        let mut val: Vec<Vec<Vec<f32>>> = vec![];
-        let normal = Normal::new(0.0, 0.1).unwrap();
-        for i in 0..depth {
-            val.push(vec![]);    
-            for j in 0..size {
-                val[i].push(vec![]);
-                for _ in 0..size {
-                    val[i][j].push(normal.sample(&mut rand::thread_rng()));
-                }
-            }
-        }
-        
-        let kernel: Kernel = Kernel {
-            size,
-            depth,
-            val,
-        };
-
-        kernel
-    }
-}
-
 struct ConvLayer {
     input_size: usize,
     input_depth: usize,
@@ -42,7 +12,7 @@ struct ConvLayer {
     output_size: usize,
     stride: usize,
     biases: Vec<f32>,
-    kernels: Vec<Kernel>,
+    kernels: Vec<Vec<Vec<Vec<f32>>>>,
     input: Vec<Vec<Vec<f32>>>,
     output: Vec<Vec<Vec<f32>>>,
 }
@@ -51,12 +21,21 @@ impl ConvLayer {
     fn create_conv_layer(input_size: usize, input_depth: usize, num_filters: usize, kernel_size: usize, stride: usize) -> ConvLayer {
 
         let mut biases: Vec<f32> = vec![];
-        let mut kernels: Vec<Kernel> = vec![];
+        let mut kernels: Vec<Vec<Vec<Vec<f32>>>> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
-        for _ in 0..num_filters {
+        for f in 0..num_filters {
             biases.push(normal.sample(&mut rand::thread_rng()));
-            kernels.push(Kernel::create_kernel(kernel_size, input_depth));
-        }
+            kernels.push(vec![]);
+            for i in 0..input_depth {
+                kernels[f].push(vec![]);    
+                for j in 0..kernel_size {
+                    kernels[f][i].push(vec![]);
+                    for _ in 0..kernel_size {
+                        kernels[f][i][j].push(normal.sample(&mut rand::thread_rng()));
+                    }
+                }
+            }
+        }        
 
         let output_size: usize = ((input_size-kernel_size) / stride) + 1;
         let mut output: Vec<Vec<Vec<f32>>> = vec![];
@@ -98,7 +77,7 @@ impl ConvLayer {
                         for x_k in 0..self.kernel_size {
                             for f_i in 0..self.input_depth {
                                 let val: f32 = input[f_i][top + y_k][left + x_k];
-                                self.output[f][y][x] += self.kernels[f].val[f_i][y_k][x_k] * val;
+                                self.output[f][y][x] += self.kernels[f][f_i][y_k][x_k] * val;
                             }
                         }
                     }
@@ -140,7 +119,7 @@ impl ConvLayer {
                         for x_k in 0..self.kernel_size {
                             if self.output[f][y][x] > 0.0 {
                                 for f_i in 0..self.input_depth {
-                                    prev_error[f_i][top+y_k][left+x_k] += self.kernels[f].val[f_i][y_k][x_k] * error[f][y][x];
+                                    prev_error[f_i][top+y_k][left+x_k] += self.kernels[f][f_i][y_k][x_k] * error[f][y][x];
                                 }
                             }
                         }
@@ -158,7 +137,7 @@ impl ConvLayer {
                         for x_k in 0..self.kernel_size {
                             if self.output[f][y][x] > 0.0 {
                                 for f_i in 0..self.input_depth {
-                                    self.kernels[f].val[f_i][y_k][x_k] -= self.input[f_i][top+y_k][left+x_k] * error[f][y][x] * LEARNING_RATE;
+                                    self.kernels[f][f_i][y_k][x_k] -= self.input[f_i][top+y_k][left+x_k] * error[f][y][x] * LEARNING_RATE;
                                 }
                             }
                         }
@@ -541,8 +520,8 @@ fn main() {
 
         prev.pop();
         prev.insert(0, result);
-
-        if rng.gen_range(0..=500) == 0 {
+        println!("{}", success(&prev));
+        if rng.gen_range(0..=500) == 1 {
             println!("{}", success(&prev));
         }
     }
