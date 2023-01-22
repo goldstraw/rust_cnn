@@ -193,15 +193,19 @@ impl MaxPoolingLayer {
 
 struct FullyConnectedLayer {
     input_size: usize,
+    input_width: usize,
+    input_depth: usize,
     output_size: usize,
     weights: Vec<Vec<f32>>,
     biases: Vec<f32>,
+    input: Vec<f32>,
     output: Vec<f32>,
 }
 
 impl FullyConnectedLayer {
-    fn create_fcl_layer(input_size: usize, output_size: usize) -> FullyConnectedLayer {
+    fn create_fcl_layer(input_width: usize, input_depth: usize, output_size: usize) -> FullyConnectedLayer {
         
+        let input_size: usize = input_depth * (input_width * input_width);
         let mut biases: Vec<f32> = vec![];
         let mut weights: Vec<Vec<f32>> = vec![];
         let normal = Normal::new(0.0, 0.1).unwrap();
@@ -213,6 +217,11 @@ impl FullyConnectedLayer {
             }
         }
 
+        let mut input: Vec<f32> = vec![];
+        for _ in 0..input_size {
+            input.push(0.0);
+        }
+
         let mut output: Vec<f32> = vec![];
         for _ in 0..output_size {
             output.push(0.0);
@@ -220,9 +229,12 @@ impl FullyConnectedLayer {
 
         let layer: FullyConnectedLayer = FullyConnectedLayer {
             input_size,
+            input_width,
+            input_depth,
             output_size,
             weights,
             biases,
+            input,
             output,
         };
 
@@ -230,6 +242,7 @@ impl FullyConnectedLayer {
     }
 
     fn forward_propagate(&mut self, input: Vec<f32>) -> Vec<Vec<Vec<f32>>> {
+        self.input = input.clone();
         for j in 0..self.output_size {
             self.output[j] = self.biases[j];
             for i in 0..self.input_size {
@@ -239,6 +252,35 @@ impl FullyConnectedLayer {
         }
         let formatted_output: Vec<Vec<Vec<f32>>> = vec![vec![self.output.clone()]];
         formatted_output
+    }
+
+    fn back_propagate(&mut self, error: Vec<f32>) -> Vec<Vec<Vec<f32>>> {
+        let mut flat_error: Vec<f32> = vec![];
+        for i in 0..self.output_size {
+            self.biases[i] -= error[i] * LEARNING_RATE;
+        }
+
+        for i in 0..self.input_size {
+            flat_error.push(0.0);
+            for j in 0..self.output_size {
+                flat_error[i] += error[j] * self.weights[i][j];
+                self.weights[i][j] -= error[j] * self.input[i] * inv_deriv_sigmoid(self.output[j]) * LEARNING_RATE;
+            }
+        }
+
+        let mut prev_error: Vec<Vec<Vec<f32>>> = vec![];
+        for i in 0..self.input_depth {
+            prev_error.push(vec![]);
+            for j in 0..self.input_width {
+                prev_error[i].push(vec![]);
+                for k in 0..self.input_width {
+                    let index: usize = i*(self.input_width*self.input_width) + j*self.input_width + k;
+                    prev_error[i][j].push(flat_error[index]);
+                }
+            }
+        }
+
+        prev_error
     }
 }
 
@@ -262,8 +304,7 @@ impl Layer {
             // Layer::Conv(a) => a.back_propagate(error),
             Layer::Conv(_) => panic!("Not implemented yet"),
             Layer::Mxpl(b) => b.back_propagate(error),
-            // Layer::Fcl(c) => c.back_propagate(error[0][0]),
-            Layer::Fcl(_) => panic!("Not implemented yet"),
+            Layer::Fcl(c) => c.back_propagate(error[0][0].clone()),
         }
     }
 
@@ -301,8 +342,8 @@ impl CNN {
         self.layers.push(Layer::Mxpl(layer))
     }
 
-    fn add_fcl_layer(&mut self, input_size: usize, output_size: usize) {
-        let layer: FullyConnectedLayer = FullyConnectedLayer::create_fcl_layer(input_size, output_size);
+    fn add_fcl_layer(&mut self, input_width: usize, input_depth: usize, output_size: usize) {
+        let layer: FullyConnectedLayer = FullyConnectedLayer::create_fcl_layer(input_width, input_depth, output_size);
         self.layers.push(Layer::Fcl(layer))
     }
 
@@ -331,13 +372,16 @@ impl CNN {
         for i in (0..self.layers.len()).rev() {
             error = self.layers[i].back_propagate(error);
         }
-        // for layer in self.layers[::-1]:
-        //     error = layer.back_propagate(error)
     }
 }
 
 fn sigmoid(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
+}
+
+fn inv_deriv_sigmoid(x: f32) -> f32 {
+    let z: f32 = (x/(1.0-x)).ln();
+    sigmoid(z) * (1.0-sigmoid(z))
 }
 
 fn format_images(data: Vec<u8>, num_images: usize) -> Vec<Vec<Vec<f32>>> {
@@ -417,11 +461,11 @@ fn main() {
     let _test_labels: Vec<u8> = tst_lbl;
 
     let mut cnn: CNN = CNN::create_cnn();
-    cnn.add_conv_layer(28, 3, 6, 5, 1);
+    cnn.add_conv_layer(28, 1, 6, 5, 1);
     cnn.add_mxpl_layer(24, 6, 2, 2);
     cnn.add_conv_layer(12, 6, 9, 3, 1);
-    cnn.add_mxpl_layer(10, 6, 2, 2);
-    cnn.add_fcl_layer(225, 10);
+    cnn.add_mxpl_layer(10, 9, 2, 2);
+    cnn.add_fcl_layer(5, 9, 10);
 
     let mut prev: Vec<bool> = vec![false; 100];
 
