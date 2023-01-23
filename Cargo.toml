@@ -5,6 +5,14 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "cnn"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cnn"
+path = "src/main.rs"
+
 [dependencies]
 rand_distr = "0.4.3"
 rand = "0.8.5"
