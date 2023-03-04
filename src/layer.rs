@@ -2,8 +2,10 @@ use crate::conv_layer::ConvLayer;
 use crate::max_pooling_layer::MaxPoolingLayer;
 use crate::fully_connected_layer::FullyConnectedLayer;
 
+/// Flattens a 3D vector into a 1D vector.
 fn flatten(squares: Vec<Vec<Vec<f32>>>) -> Vec<f32> {
     let mut flat_data: Vec<f32> = vec![];
+
     for square in squares {
         for row in square {
             flat_data.extend(row);
@@ -13,6 +15,7 @@ fn flatten(squares: Vec<Vec<Vec<f32>>>) -> Vec<f32> {
     flat_data
 }
 
+/// Represents a layer in a neural network.
 pub enum Layer {
     Conv(ConvLayer),
     Mxpl(MaxPoolingLayer),
@@ -20,6 +23,7 @@ pub enum Layer {
 }
 
 impl Layer {
+    /// Forward propagates input through the layer
     pub fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         match self {
             Layer::Conv(a) => a.forward_propagate(input),
@@ -28,6 +32,7 @@ impl Layer {
         }
     }
 
+    /// Back propagates error through the layer
     pub fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         match self {
             Layer::Conv(a) => a.back_propagate(error),
@@ -36,6 +41,7 @@ impl Layer {
         }
     }
 
+    /// Returns the output value at a specific index
     pub fn get_output(&mut self, index: usize) -> f32 {
         match self {
             Layer::Conv(_) => panic!("Layer not fully connected"),
