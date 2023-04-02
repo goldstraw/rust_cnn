@@ -1,6 +1,6 @@
 use rand_distr::{Normal, Distribution};
 
-use crate::LEARNING_RATE;
+use crate::{LEARNING_RATE, layer::Layer};
 
 /// Defines a `ConvolutionalLayer` structure.
 pub struct ConvLayer {
@@ -62,9 +62,12 @@ impl ConvLayer {
 
         layer
     }
+}
+
+impl Layer for ConvLayer {
 
     /// Forward propagates the input data through the Convolutional layer.
-    pub fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         // Store the input data in a member variable for future reference.
         self.input = input.clone();
 
@@ -108,7 +111,7 @@ impl ConvLayer {
 
     /// Back propagates the error through the Convolutional layer.
     /// Returns the error for the previous layer.
-    pub fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         let mut prev_error: Vec<Vec<Vec<f32>>> =
             vec![vec![vec![0.0; self.input_size]; self.input_size]; self.input_depth];
         let mut new_kernels: Vec<Vec<Vec<Vec<f32>>>> = self.kernels.clone();
@@ -146,5 +149,9 @@ impl ConvLayer {
 
         // Return the error for the previous layer.
         prev_error
+    }
+
+    fn get_output(&mut self, _index: usize) -> f32 {
+        panic!("Convolutional layers should not be accessed directly.")
     }
 }
