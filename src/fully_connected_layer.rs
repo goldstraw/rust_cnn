@@ -1,6 +1,6 @@
 use rand_distr::{Distribution, Normal};
 
-use crate::LEARNING_RATE;
+use crate::{LEARNING_RATE, layer::Layer};
 
 /// Sigmoid activation function
 pub fn sigmoid(x: f32) -> f32 {
@@ -63,9 +63,26 @@ impl FullyConnectedLayer {
 
         layer
     }
+}
 
+/// Flattens a 3D vector into a 1D vector.
+fn flatten(squares: Vec<Vec<Vec<f32>>>) -> Vec<f32> {
+    let mut flat_data: Vec<f32> = vec![];
+
+    for square in squares {
+        for row in square {
+            flat_data.extend(row);
+        }
+    }
+
+    flat_data
+}
+
+impl Layer for FullyConnectedLayer {
     /// Calculates the output layer by forward propagating the input layer.
-    pub fn forward_propagate(&mut self, input: Vec<f32>) -> Vec<Vec<Vec<f32>>> {
+    fn forward_propagate(&mut self, matrix_input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        // Flatten the input matrix into a 1D vector
+        let input: Vec<f32> = flatten(matrix_input);
         // Store the input for backpropagation
         self.input = input.clone();
         for j in 0..self.output_size {
@@ -86,7 +103,10 @@ impl FullyConnectedLayer {
     /// Back propagates the error through the fully connected layer.
     /// Updates the weights and biases of the current layer.
     /// Returns the error of the previous layer.
-    pub fn back_propagate(&mut self, error: Vec<f32>) -> Vec<Vec<Vec<f32>>> {
+    fn back_propagate(&mut self, matrix_error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+        // Flatten the error matrix into a 1D vector
+        let error: Vec<f32> = matrix_error[0][0].clone();
+        
         let mut flat_error: Vec<f32> = vec![0.0; self.input_size];
 
         // Update the weights and biases according to their derivatives
@@ -112,5 +132,10 @@ impl FullyConnectedLayer {
         }
 
         prev_error
+    }
+
+    /// Returns the output at an index of the fully connected layer.
+    fn get_output(&mut self, index: usize) -> f32 {
+        self.output[index]
     }
 }

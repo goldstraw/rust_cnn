@@ -6,13 +6,14 @@ use crate::{
 /// A struct that represents a Convolutional Neural Network (CNN)
 pub struct CNN {
     /// A vector of `Layer` objects representing the layers in the CNN
-    layers: Vec<Layer>,
+    /// Layer is a trait that is implemented by `ConvLayer`, `MaxPoolingLayer`, and `FullyConnectedLayer`
+    layers: Vec<Box<dyn Layer>>,
 }
 
 impl CNN {
     /// Creates a new `CNN` object with an empty vector of layers
     pub fn new() -> CNN {
-        let layers: Vec<Layer> = vec![];
+        let layers: Vec<Box<dyn Layer>> = Vec::new();
 
         let cnn: CNN = CNN { layers };
 
@@ -29,10 +30,11 @@ impl CNN {
         stride: usize,
     ) {
         // Create a new convolutional layer with the specified parameters.
-        let layer: ConvLayer =
+        let conv_layer: ConvLayer =
             ConvLayer::new(input_size, input_depth, num_filters, kernel_size, stride);
+        let conv_layer_ptr = Box::new(conv_layer) as Box<dyn Layer>;
         // Push the layer onto the list of layers in the neural network.
-        self.layers.push(Layer::Conv(layer))
+        self.layers.push(conv_layer_ptr)
     }
 
     /// Adds a max pooling layer to the neural network
@@ -44,19 +46,21 @@ impl CNN {
         stride: usize,
     ) {
         // Create a new max pooling layer with the specified parameters
-        let layer: MaxPoolingLayer =
+        let mxpl_layer: MaxPoolingLayer =
             MaxPoolingLayer::new(input_size, input_depth, kernel_size, stride);
+        let mxpl_layer_ptr = Box::new(mxpl_layer) as Box<dyn Layer>;
         // Push the layer onto the list of layers in the neural network.
-        self.layers.push(Layer::Mxpl(layer))
+        self.layers.push(mxpl_layer_ptr)
     }
 
     /// Adds a fully connected layer to the neural network
     pub fn add_fcl_layer(&mut self, input_width: usize, input_depth: usize, output_size: usize) {
         // Create a new fully connected layer with the specified parameters
-        let layer: FullyConnectedLayer =
+        let fcl_layer: FullyConnectedLayer =
             FullyConnectedLayer::new(input_width, input_depth, output_size);
+        let fcl_layer_ptr = Box::new(fcl_layer) as Box<dyn Layer>;
         // Push the layer onto the list of layers in the neural network.
-        self.layers.push(Layer::Fcl(layer))
+        self.layers.push(fcl_layer_ptr)
     }
 
     /// Forward propagates an input matrix through the CNN.

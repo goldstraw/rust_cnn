@@ -1,3 +1,5 @@
+use crate::layer::Layer;
+
 /// Defines a `MaxPoolingLayer` structure.
 pub struct MaxPoolingLayer {
     input_size: usize,
@@ -32,9 +34,11 @@ impl MaxPoolingLayer {
 
         layer
     }
+}
 
+impl Layer for MaxPoolingLayer {
     /// Reduces the size of the input by using max pooling.
-    pub fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         // Loop through each output position in the output volume
         for y in 0..self.output_size {
             for x in 0..self.output_size {
@@ -64,7 +68,7 @@ impl MaxPoolingLayer {
 
     /// Back propagates the error in a max pooling layer. 
     /// Takes in the error matrix and returns the previous error matrix
-    pub fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
+    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         let mut prev_error: Vec<Vec<Vec<f32>>> =
             vec![vec![vec![0.0; self.input_size]; self.input_size]; self.input_depth];
 
@@ -82,5 +86,9 @@ impl MaxPoolingLayer {
 
         // Return the previous error vector
         prev_error
+    }
+
+    fn get_output(&mut self, _index: usize) -> f32 {
+        panic!("Max pooling layers should not be accessed directly.")
     }
 }
