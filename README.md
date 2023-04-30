@@ -47,7 +47,7 @@ This command will run a demo of the CNN and train it on the MNIST dataset.
 
 ## Further Reading
 
-For more information about this project, read [my blog post on CNNs](https://charliegoldstraw.com/articles/cnn/):
+For more information about this project, read [my blog post on CNNs](https://charliegoldstraw.com/articles/cnn/).
 
 ## License
 
