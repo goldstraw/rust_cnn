@@ -37,7 +37,7 @@ $ cargo build
 
 ## Usage
 
-To run the demo of the CNN, use the following command:
+To run the demo of the CNN, place the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) in a folder named `data`, and use the following command:
 
 ```
 $ cargo run
