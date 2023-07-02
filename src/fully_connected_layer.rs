@@ -9,8 +9,7 @@ pub fn sigmoid(x: f32) -> f32 {
 
 /// Inverse derivative of the sigmoid function
 pub fn inv_deriv_sigmoid(x: f32) -> f32 {
-    let z: f32 = (x / (1.0 - x)).ln();
-    sigmoid(z) * (1.0 - sigmoid(z))
+    x * (1.0 - x)
 }
 
 /// Defines a `FullyConnectedLayer` structure.
@@ -105,7 +104,10 @@ impl Layer for FullyConnectedLayer {
     /// Returns the error of the previous layer.
     fn back_propagate(&mut self, matrix_error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
         // Flatten the error matrix into a 1D vector
-        let error: Vec<f32> = matrix_error[0][0].clone();
+        let mut error: Vec<f32> = matrix_error[0][0].clone();
+        for j in 0..self.output_size {
+            error[j] *= inv_deriv_sigmoid(self.output[j]);
+        }
         
         let mut flat_error: Vec<f32> = vec![0.0; self.input_size];
 
@@ -115,7 +117,7 @@ impl Layer for FullyConnectedLayer {
             for i in 0..self.input_size {
                 flat_error[i] += error[j] * self.weights[i][j];
                 self.weights[i][j] -=
-                    error[j] * self.input[i] * inv_deriv_sigmoid(self.output[j]) * LEARNING_RATE;
+                    error[j] * self.input[i] * LEARNING_RATE;
             }
         }
 
