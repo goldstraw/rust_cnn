@@ -1,19 +1,25 @@
 [package]
-name = "cnn"
+name = "oxi_net"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "cnn"
+name = "oxi_net"
 path = "src/lib.rs"
 
 [[bin]]
-name = "cnn"
+name = "oxi_net"
 path = "src/main.rs"
 
 [dependencies]
 rand_distr = "0.4.3"
 rand = "0.8.5"
-mnist = "0.5.0"
+ndarray = {version = "0.15.0", features = ["serde"]}
+serde = {version = "1.0.163", features = ["derive"]}
+serde_json = "1.0"
+rust-mnist = "0.2"
+indicatif = "0.17.7"
+image = "0.23"
+walkdir = "2.3"

@@ -1,107 +1,96 @@
-use rand_distr::{Normal, Distribution};
+use std::ops::{AddAssign, SubAssign};
+use std::fmt::{Debug, Formatter};
+use ndarray::{Array3, Array4, s};
+use rand_distr::{Distribution, Normal};
+use serde::{Serialize, Deserialize};
+use crate::optimizer::{Optimizer4D, OptimizerAlg};
 
-use crate::{LEARNING_RATE, layer::Layer};
-
-/// Defines a `ConvolutionalLayer` structure.
+#[derive(Serialize, Deserialize)]
 pub struct ConvLayer {
-    input_size: usize,
-    input_depth: usize,
-    num_filters: usize,
+    input_size: (usize, usize, usize),
     kernel_size: usize,
-    output_size: usize,
+    pub output_size: (usize, usize, usize),
+    #[serde(skip)]
+    input: Array3<f32>,
+    #[serde(skip)]
+    output: Array3<f32>,
     stride: usize,
-    biases: Vec<f32>,
-    kernels: Vec<Vec<Vec<Vec<f32>>>>,
-    input: Vec<Vec<Vec<f32>>>,
-    output: Vec<Vec<Vec<f32>>>,
+    num_filters: usize,
+    kernels: Array4<f32>,
+    #[serde(skip)]
+    kernel_changes: Array4<f32>,
+    optimizer: Optimizer4D,
 }
 
-impl ConvLayer {
-    /// Creates a new convolutional layer with the given parameters
-    pub fn new(
-        input_size: usize,
-        input_depth: usize,
-        num_filters: usize,
-        kernel_size: usize,
-        stride: usize,
-    ) -> ConvLayer {
-        // Initialize the biases and kernels with empty vectors
-        let mut biases = vec![];
-        let mut kernels = vec![vec![vec![vec![]; kernel_size]; input_depth]; num_filters];
+impl Debug for ConvLayer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut s = String::new();
+        s.push_str("Convolutional Layer\n");
+        s.push_str(&format!("Input Size: {}x{}x{}\n", self.input_size.0, self.input_size.1, self.input_size.2));
+        s.push_str(&format!("Kernel Size: {}x{}\n", self.kernel_size, self.kernel_size));
+        s.push_str(&format!("Output Size: {}x{}x{}\n", self.output_size.0, self.output_size.1, self.output_size.2));
+        s.push_str(&format!("Stride: {}\n", self.stride));
+        s.push_str(&format!("Number of Filters: {}\n", self.num_filters));
 
-        // Use He initialisation by using a mean of 0.0 and a standard deviation of sqrt(2/(input_channels * num_params))
-        let normal = Normal::new(0.0, (2.0/(input_depth*kernel_size.pow(2)) as f32).sqrt()).unwrap();
-
-        // Fill the biases and kernels with random values from the normal distribution
-        for f in 0..num_filters {
-            biases.push(0.1);
-            for i in 0..input_depth {
-                for j in 0..kernel_size {
-                    for _ in 0..kernel_size {
-                        kernels[f][i][j].push(normal.sample(&mut rand::thread_rng()));
-                    }
-                }
-            }
-        }
-
-        let output_size: usize = ((input_size - kernel_size) / stride) + 1;
-
-        // Create the ConvolutionalLayer struct and return it
-        let layer: ConvLayer = ConvLayer {
-            input_size,
-            input_depth,
-            num_filters,
-            kernel_size,
-            output_size,
-            stride,
-            biases,
-            kernels,
-            input: vec![],
-            output: vec![vec![vec![0.0; output_size]; output_size]; num_filters],
-        };
-
-        layer
+        write!(f, "{}", s)
     }
 }
 
-impl Layer for ConvLayer {
+impl ConvLayer {
+    pub fn zero(&mut self) {
+        self.kernel_changes = Array4::<f32>::zeros((self.num_filters, self.kernel_size, self.kernel_size, self.input_size.2));
+        self.output = Array3::<f32>::zeros(self.output_size);
+    }
 
-    /// Forward propagates the input data through the Convolutional layer.
-    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-        // Store the input data in a member variable for future reference.
-        self.input = input.clone();
+    /// Create a new max pooling layer with the given parameters
+    pub fn new(
+        input_size: (usize, usize, usize),
+        kernel_size: usize,
+        stride: usize,
+        num_filters: usize,
+        optimizer_alg: OptimizerAlg,
+    ) -> ConvLayer {
+        let output_width: usize = ((input_size.0 - kernel_size) / stride) + 1;
+        let output_size = (output_width, output_width, num_filters);
+        let mut kernels = Array4::<f32>::zeros((num_filters, kernel_size, kernel_size, input_size.2));
+        let normal = Normal::new(0.0, 1.0).unwrap();
 
-        // Iterate through each output point in the output matrix.
-        for y in 0..self.output_size {
-            for x in 0..self.output_size {
-                // Calculate the starting point for the convolutional kernel.
-                let left = x * self.stride;
-                let top = y * self.stride;
-                // Iterate through each filter in the network.
-                for f in 0..self.num_filters {
-                    // Initialize the output value with the bias value for the filter.
-                    self.output[f][y][x] = self.biases[f];
-                    
-                    // Iterate through each input channel.
-                    for f_i in 0..self.input_depth {
-                        for y_k in 0..self.kernel_size {
-                            for x_k in 0..self.kernel_size {
-                                // Get the value of the input at the current point.
-                                let val: f32 = input[f_i][top + y_k][left + x_k];
-                                // Store the result of the convolution in the output matrix.
-                                self.output[f][y][x] += self.kernels[f][f_i][y_k][x_k] * val;
-                            }
-                        }
+        for f in 0..num_filters {
+            for kd in 0..input_size.2 {
+                for ky in 0..kernel_size {
+                    for kx in 0..kernel_size {
+                        kernels[[f, ky, kx, kd]] = normal.sample(&mut rand::thread_rng()) * (2.0/(input_size.0.pow(2)) as f32).sqrt();
                     }
                 }
             }
         }
 
-        // Apply the ReLU activation function to the output.
-        for f in 0..self.num_filters {
-            for y in 0..self.output_size {
-                for x in 0..self.output_size {
-                    self.output[f][y][x] = self.output[f][y][x].max(0.0);
+        let optimizer = Optimizer4D::new(optimizer_alg, (num_filters, kernel_size, kernel_size, input_size.2));
+        
+        let layer: ConvLayer = ConvLayer {
+            input_size,
+            kernel_size,
+            output_size,
+            stride,
+            output: Array3::<f32>::zeros(output_size),
+            input: Array3::<f32>::zeros(input_size),
+            num_filters,
+            kernels,
+            kernel_changes: Array4::<f32>::zeros((num_filters, kernel_size, kernel_size, input_size.2)),
+            optimizer,
+        };
+        
+        layer
+    }
+
+    pub fn forward_propagate(&mut self, input: Array3<f32>) -> Array3<f32> {
+        self.input = input;
+        for f in 0..self.output_size.2 {
+            let kernel_slice = self.kernels.slice(s![f, .., .., ..]);
+            for y in 0..self.output_size.1 {
+                for x in 0..self.output_size.0 {
+                    let input_slice = self.input.slice(s![x..x+self.kernel_size, y..y+self.kernel_size, ..]);
+                    self.output[[x, y, f]] = (&input_slice * &kernel_slice).sum().max(0.0);
                 }
             }
         }
@@ -109,49 +98,28 @@ impl Layer for ConvLayer {
         self.output.clone()
     }
 
-    /// Back propagates the error through the Convolutional layer.
-    /// Returns the error for the previous layer.
-    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>> {
-        let mut prev_error: Vec<Vec<Vec<f32>>> =
-            vec![vec![vec![0.0; self.input_size]; self.input_size]; self.input_depth];
-        let mut new_kernels: Vec<Vec<Vec<Vec<f32>>>> = self.kernels.clone();
-
-        // Iterate through each output point in the output matrix.
-        for y in 0..self.output_size {
-            for x in 0..self.output_size {
-                // Calculate the receptive field coordinates for the current output point.
-                let left = x * self.stride;
-                let top = y * self.stride;
-                // Iterate through each filter in the network.
-                for f in 0..self.num_filters {
-                    // Only update parameters which affect the output.
-                    if self.output[f][y][x] > 0.0 {
-                        self.biases[f] -= error[f][y][x] * LEARNING_RATE;
-                        for y_k in 0..self.kernel_size {
-                            for x_k in 0..self.kernel_size {
-                                for f_i in 0..self.input_depth {
-                                    // Update the error for the previous layer.
-                                    prev_error[f_i][top + y_k][left + x_k] +=
-                                        self.kernels[f][f_i][y_k][x_k] * error[f][y][x];
-                                    // Store the new kernel values.
-                                    new_kernels[f][f_i][y_k][x_k] -= self.input[f_i][top + y_k][left + x_k]
-                                        * error[f][y][x]
-                                        * LEARNING_RATE;
-                                }
-                            }
-                        }
+    pub fn back_propagate(&mut self, error: Array3<f32>) -> Array3<f32> {
+        let mut prev_error: Array3<f32> = Array3::<f32>::zeros(self.input_size);
+        for f in 0..self.output_size.2 {
+            for y in 0..self.output_size.1 {
+                for x in 0..self.output_size.0 {
+                    if self.output[[x, y, f]] <= 0.0 {
+                        continue;
                     }
+                    prev_error.slice_mut(s![x..x+self.kernel_size, y..y+self.kernel_size, ..]).add_assign(&(error[[x, y, f]] * &self.kernels.slice(s![f, .., .., ..])));
+                    
+                    let input_slice = self.input.slice(s![x..x+self.kernel_size, y..y+self.kernel_size, ..]);
+                    self.kernel_changes.slice_mut(s![f, .., .., ..]).sub_assign(&(error[[x, y, f]] * &input_slice));
                 }
             }
         }
 
-        self.kernels = new_kernels;
-
-        // Return the error for the previous layer.
         prev_error
     }
 
-    fn get_output(&mut self, _index: usize) -> f32 {
-        panic!("Convolutional layers should not be accessed directly.")
+    pub fn update(&mut self, minibatch_size: usize) {
+        self.kernel_changes /= minibatch_size as f32;
+        self.kernels += &self.optimizer.weight_changes(&self.kernel_changes);
+        self.kernel_changes = Array4::<f32>::zeros((self.num_filters, self.kernel_size, self.kernel_size, self.input_size.2));
     }
 }

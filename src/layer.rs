@@ -1,11 +1,22 @@
-/// A trait for a layer in a CNN
-pub trait Layer {
-    /// Forward propagates input through the layer
-    fn forward_propagate(&mut self, input: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>>;
+use serde::{Serialize, Deserialize};
+use std::fmt::{Debug, Formatter};
+use crate::conv_layer::ConvLayer;
+use crate::mxpl_layer::MxplLayer;
+use crate::dense_layer::DenseLayer;
 
-    /// Back propagates error through the layer
-    fn back_propagate(&mut self, error: Vec<Vec<Vec<f32>>>) -> Vec<Vec<Vec<f32>>>;
+#[derive(Serialize, Deserialize)]
+pub enum Layer {
+    Conv(ConvLayer),
+    Mxpl(MxplLayer),
+    Dense(DenseLayer),
+}
 
-    /// Returns the output value at a specific index
-    fn get_output(&mut self, index: usize) -> f32;
+impl Debug for Layer {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Layer::Conv(layer) => write!(f, "{:?}", layer),
+            Layer::Mxpl(layer) => write!(f, "{:?}", layer),
+            Layer::Dense(layer) => write!(f, "{:?}", layer),
+        }
+    }
 }
