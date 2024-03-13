@@ -55,6 +55,7 @@ pub struct CNN {
     verbose: bool,
     optimizer: OptimizerAlg,
     epochs: usize,
+    input_shape: (usize, usize, usize),
 }
 
 impl Debug for CNN {
@@ -98,6 +99,7 @@ impl CNN {
             verbose: params.verbose,
             optimizer: params.optimizer,
             epochs: params.epochs,
+            input_shape: (0, 0, 0),
         };
 
         cnn
@@ -110,12 +112,29 @@ impl CNN {
         cnn
     }
 
+    pub fn set_input_shape(&mut self, input_shape: Vec<usize>) {
+        let mut iter = input_shape.into_iter();
+        self.input_shape = (
+            iter.next().unwrap(),
+            iter.next().unwrap_or(1),
+            iter.next().unwrap_or(1),
+        )
+    }
+
     pub fn add_conv_layer(
         &mut self,
-        input_size: (usize, usize, usize),
         num_filters: usize,
         kernel_size: usize,
     ) {
+        if self.input_shape.0 == 0 {
+            panic!("Input shape not set, use cnn.set_input_shape()");
+        }
+        let input_size: (usize, usize, usize) = match self.layers.last() {
+            Some(Layer::Conv(conv_layer)) => conv_layer.output_size,
+            Some(Layer::Mxpl(mxpl_layer)) => mxpl_layer.output_size,
+            Some(Layer::Dense(_)) => panic!("Convolutional Layer cannot follow a Dense Layer"),
+            None => self.input_shape,
+        };
         let conv_layer: ConvLayer = ConvLayer::new(input_size, kernel_size, 1, num_filters, self.optimizer.clone());
         self.layers.push(Layer::Conv(conv_layer));
         self.layer_order.push(String::from("conv"));
@@ -123,22 +142,34 @@ impl CNN {
 
     pub fn add_mxpl_layer(
         &mut self,
-        input_size: (usize, usize, usize),
         kernel_size: usize,
     ) {
+        if self.input_shape.0 == 0 {
+            panic!("Input shape not set, use cnn.set_input_shape()");
+        }
+        let input_size: (usize, usize, usize) = match self.layers.last() {
+            Some(Layer::Conv(conv_layer)) => conv_layer.output_size,
+            Some(Layer::Mxpl(mxpl_layer)) => mxpl_layer.output_size,
+            Some(Layer::Dense(_)) => panic!("Max Pooling Layer cannot follow a Dense Layer"),
+            None => self.input_shape,
+        };
         let mxpl_layer: MxplLayer = MxplLayer::new(input_size, kernel_size, 2);
         self.layers.push(Layer::Mxpl(mxpl_layer));
         self.layer_order.push(String::from("mxpl"));
     }
 
-    pub fn add_dense_layer(&mut self, input_size: usize, output_size: usize, activation: Activation, dropout: Option<f32>) {
+    pub fn add_dense_layer(&mut self, output_size: usize, activation: Activation, dropout: Option<f32>) {
+        if self.input_shape.0 == 0 {
+            panic!("Input shape not set, use cnn.set_input_shape()");
+        }
         // Find last layer's output size
         let transition_shape: (usize, usize, usize) = match self.layers.last() {
             Some(Layer::Conv(conv_layer)) => conv_layer.output_size,
             Some(Layer::Mxpl(mxpl_layer)) => mxpl_layer.output_size,
-            Some(Layer::Dense(_)) => (input_size, 1, 1),
-            None => (input_size, 1, 1),
+            Some(Layer::Dense(dense_layer)) => (dense_layer.output_size, 1, 1),
+            None => self.input_shape,
         };
+        let input_size = transition_shape.0 * transition_shape.1 * transition_shape.2;
         let fcl_layer: DenseLayer = DenseLayer::new(input_size, output_size, activation, self.optimizer, dropout, transition_shape);
         self.layers.push(Layer::Dense(fcl_layer));
         self.layer_order.push(String::from("dense"));

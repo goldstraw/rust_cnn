@@ -7,7 +7,7 @@ use oxi_net::activation::Activation;
 
 fn main() {
     // Load MNIST dataset
-    let data = load_mnist("../oxi_net/data/");
+    let data = load_mnist("./data/");
 
     // Set hyperparameters
     let hyperparameters = Hyperparameters {
@@ -19,11 +19,12 @@ fn main() {
 
     // Create CNN architecture
     let mut cnn = CNN::new(data, hyperparameters);
-    cnn.add_conv_layer((28, 28, 3), 8, 3);
-    cnn.add_mxpl_layer((26, 26, 8), 2);
-    cnn.add_dense_layer(13 * 13 * 8, 128, Activation::Relu, Some(0.25));
-    cnn.add_dense_layer(128, 64, Activation::Relu, Some(0.25));
-    cnn.add_dense_layer(64, 10, Activation::Softmax, None);
+    cnn.set_input_shape(vec![28, 28, 3]);
+    cnn.add_conv_layer(8, 3);
+    cnn.add_mxpl_layer(2);
+    cnn.add_dense_layer(128, Activation::Relu, Some(0.25));
+    cnn.add_dense_layer(64, Activation::Relu, Some(0.25));
+    cnn.add_dense_layer(10, Activation::Softmax, None);
 
     cnn.train();
 
