@@ -15,14 +15,6 @@ The repository implements the following features:
 - Dropout
 - He initialization
 
-## Installation
-
-To use this CNN implementation, you must have Rust and Cargo installed on your machine. After installing Rust and Cargo, you can clone this repository to your local machine and build the project with the following command:
-
-```
-$ cargo build --release
-```
-
 ## Usage
 
 To run the demo of the CNN, place the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) in a folder named `data`, and use the following command:
